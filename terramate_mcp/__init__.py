@@ -1,0 +1,1 @@
+# Terramate MCP package initializer
