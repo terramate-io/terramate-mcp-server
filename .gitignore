@@ -34,5 +34,6 @@ go.work.sum
 # Development
 openapi.yml
 
-# Binary
-terramate-mcp-server
+# Binary (ignore in root and bin directory, but not cmd directory)
+/terramate-mcp-server
+/bin/terramate-mcp-server

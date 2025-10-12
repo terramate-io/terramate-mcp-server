@@ -1,4 +1,4 @@
-name: 🧪 Test
+name: 🔨 Build
 
 on:
   push: { branches: [main] }
@@ -9,8 +9,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  test:
-    name: Run tests
+  build:
+    name: 🛠️ Build
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -29,14 +29,18 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      - name: Run tests with coverage
-        run: make ci-test
+      - name: Build binary
+        run: make ci-build
         shell: bash
 
-      - name: Upload coverage report
+      - name: Verify binary works
+        run: ./bin/terramate-mcp-server --help
+        shell: bash
+
+      - name: Upload binary artifact
         uses: actions/upload-artifact@v4
-        if: matrix.os == 'ubuntu-latest'
         with:
-          name: coverage-report
-          path: coverage.out
-          retention-days: 30
+          name: terramate-mcp-server-${{ matrix.os }}
+          path: bin/terramate-mcp-server${{ matrix.os == 'windows-latest' && '.exe' || '' }}
+          retention-days: 7
+

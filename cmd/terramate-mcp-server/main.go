@@ -1,6 +1,3 @@
-// Copyright 2025 Terramate GmbH and contributors
-// SPDX-License-Identifier: Apache-2.0
-
 package main
 
 import (
@@ -30,10 +27,10 @@ var (
 		Required: true,
 	}
 
-	apiEndpointFlag = &cli.StringFlag{
-		Name:    "api-endpoint",
-		Usage:   "Terramate Cloud API endpoint",
-		EnvVars: []string{"TERRAMATE_API_ENDPOINT"},
+	baseURLFlag = &cli.StringFlag{
+		Name:    "base-url",
+		Usage:   "Terramate Cloud API base URL",
+		EnvVars: []string{"TERRAMATE_BASE_URL"},
 		Value:   "https://api.terramate.io",
 	}
 )
@@ -43,7 +40,7 @@ func main() {
 		Name:        "terramate-mcp-server",
 		Usage:       "Terramate MCP Server",
 		Description: "Terramate MCP server to manage Terramate Cloud and CLI with natural language",
-		Flags:       []cli.Flag{apiKeyFlag, regionFlag, apiEndpointFlag},
+		Flags:       []cli.Flag{apiKeyFlag, regionFlag, baseURLFlag},
 		Action: func(c *cli.Context) error {
 			apiKey := c.String(apiKeyFlag.Name)
 			// Validate region
@@ -52,17 +49,17 @@ func main() {
 				return fmt.Errorf("invalid region: %s (must be 'eu' or 'us')", region)
 			}
 
-			apiEndpoint := c.String(apiEndpointFlag.Name)
+			baseURL := c.String(baseURLFlag.Name)
 
 			config := &Config{
-				APIKey:      apiKey,
-				Region:      region,
-				APIEndpoint: apiEndpoint,
+				APIKey:  apiKey,
+				Region:  region,
+				BaseURL: baseURL,
 			}
 
 			server, err := newServer(config)
 			if err != nil {
-				return fmt.Errorf("failed to create mcp server: %w", err)
+				return fmt.Errorf("failed to create MCP server: %w", err)
 			}
 
 			ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
@@ -89,7 +86,7 @@ func main() {
 
 			server.stop(ctx)
 
-			log.Println("Standalone server shut down")
+			log.Println("Terramate MCP server shut down")
 
 			return serverErr
 		},

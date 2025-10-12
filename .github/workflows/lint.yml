@@ -17,21 +17,19 @@ jobs:
       - name: Check out repository code
         uses: actions/checkout@v5
 
-      - name: Mark source directory as safe.
-        run: git config --global --add safe.directory $GITHUB_WORKSPACE
+      - name: Mark source directory as safe
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
       - name: Set up Go
         uses: actions/setup-go@v6
-        with: { go-version-file: go.mod }
-
-      - name: Check formatting using gofmt
-        run: gofmt -s -l -d .
-
-      - name: Check for suspicious constructs using "go vet"
-        run: go vet ./...
-
-      - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v8
         with:
-          args: --verbose
-          version: v2.5
+          go-version-file: go.mod
+          cache: true
+
+      - name: Install golangci-lint
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin
+          echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
+
+      - name: Run all lint checks
+        run: make ci-lint

@@ -11,7 +11,7 @@ type MembershipsService struct {
 	client *Client
 }
 
-// List retrieves all organization memberships for the authenticated user
+// Retrieves the organization membership for the authenticated user
 //
 // GET /v1/memberships
 //

@@ -7,7 +7,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"strings"
 	"time"
 )
 
@@ -119,7 +118,10 @@ func (c *Client) newRequest(ctx context.Context, method, path string, body io.Re
 	req.Header.Set("User-Agent", c.userAgent)
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Authorization", "Bearer "+c.apiKey)
+
+	// API key authentication: Basic Auth with API key as username, empty password
+	// @TODO: Needs to be updated in the future whenever we want to start supporting JWT tokens
+	req.SetBasicAuth(c.apiKey, "")
 
 	return req, nil
 }
@@ -188,38 +190,4 @@ func (e *ErrorResponse) String() string {
 		return e.Error
 	}
 	return fmt.Sprintf("%s: %v", e.Error, e.Details)
-}
-
-// buildURL builds a URL with query parameters
-func buildURL(base string, params map[string]string) string {
-	if len(params) == 0 {
-		return base
-	}
-
-	values := url.Values{}
-	for key, value := range params {
-		if value != "" {
-			values.Set(key, value)
-		}
-	}
-
-	if query := values.Encode(); query != "" {
-		return base + "?" + query
-	}
-
-	return base
-}
-
-// formatJSON formats a JSON payload for requests
-func formatJSON(v interface{}) (io.Reader, error) {
-	if v == nil {
-		return nil, nil
-	}
-
-	b, err := json.Marshal(v)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal JSON: %w", err)
-	}
-
-	return strings.NewReader(string(b)), nil
 }
