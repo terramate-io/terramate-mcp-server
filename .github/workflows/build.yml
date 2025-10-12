@@ -43,4 +43,3 @@ jobs:
           name: terramate-mcp-server-${{ matrix.os }}
           path: bin/terramate-mcp-server${{ matrix.os == 'windows-latest' && '.exe' || '' }}
           retention-days: 7
-
