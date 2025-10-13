@@ -1,6 +1,6 @@
 module github.com/terramate-io/terramate-mcp-server
 
-go 1.25.2
+go 1.25.0
 
 require (
 	github.com/mark3labs/mcp-go v0.41.1

@@ -7,6 +7,7 @@ import (
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
+	"github.com/terramate-io/terramate-mcp-server/internal/version"
 	"github.com/terramate-io/terramate-mcp-server/sdk/terramate"
 	"github.com/terramate-io/terramate-mcp-server/tools"
 )
@@ -18,6 +19,7 @@ type Server struct {
 	config       *Config
 }
 
+// Config holds server configuration values required to initialize dependencies.
 type Config struct {
 	APIKey  string
 	Region  string
@@ -31,10 +33,13 @@ func newServer(config *Config) (*Server, error) {
 	}
 
 	// Create Terramate Cloud API client
-	tmcClient, err := terramate.NewClient(
-		config.APIKey,
-		terramate.WithBaseURL(config.BaseURL),
-	)
+	var opts []terramate.ClientOption
+	if config.BaseURL == "" || config.BaseURL == "https://api.terramate.io" {
+		opts = append(opts, terramate.WithRegion(config.Region))
+	} else {
+		opts = append(opts, terramate.WithBaseURL(config.BaseURL))
+	}
+	tmcClient, err := terramate.NewClient(config.APIKey, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Terramate client: %w", err)
 	}
@@ -51,15 +56,15 @@ func newServer(config *Config) (*Server, error) {
 	// Create MCP server
 	s.mcp = server.NewMCPServer(
 		"terramate-mcp-server",
-		"1.0.0",
+		version.Version,
 		server.WithToolCapabilities(false),
 		server.WithLogging(),
 		// server.WithInstructions(instructions.Get()),
 	)
 
-	// Register MCP tools
+	// Register MCP tools using AddTools
+	s.mcp.AddTools(toolHandlers.Tools()...)
 	for _, tool := range toolHandlers.Tools() {
-		s.mcp.AddTool(tool.Tool, tool.Handler)
 		log.Printf("Registered MCP tool: %s", tool.Tool.Name)
 	}
 
@@ -79,7 +84,7 @@ func (s *Server) start(ctx context.Context) error {
 	// Wait for context cancellation or server error
 	select {
 	case <-ctx.Done():
-		log.Println("Context cancelled, shutting down stdio server")
+		log.Println("Context canceled, shutting down stdio server")
 		return ctx.Err()
 	case err := <-errChan:
 		return err
@@ -88,7 +93,7 @@ func (s *Server) start(ctx context.Context) error {
 
 // stop gracefully shuts down the server
 func (s *Server) stop(ctx context.Context) {
-	log.Println("terramate-mcp-server stopped")
+	log.Println("Terramate MCP server stopped")
 }
 
 // AddTool registers an MCP tool handler

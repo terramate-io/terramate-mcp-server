@@ -24,7 +24,7 @@ var (
 		Name:     "region",
 		Usage:    "Terramate Cloud region (eu or us)",
 		EnvVars:  []string{"TERRAMATE_REGION"},
-		Required: true,
+		Required: false,
 	}
 
 	baseURLFlag = &cli.StringFlag{
@@ -43,13 +43,12 @@ func main() {
 		Flags:       []cli.Flag{apiKeyFlag, regionFlag, baseURLFlag},
 		Action: func(c *cli.Context) error {
 			apiKey := c.String(apiKeyFlag.Name)
-			// Validate region
 			region := c.String(regionFlag.Name)
-			if region != "eu" && region != "us" {
+			baseURL := c.String(baseURLFlag.Name)
+			// Only validate region if provided and using default base URL
+			if baseURL == "https://api.terramate.io" && region != "" && region != "eu" && region != "us" {
 				return fmt.Errorf("invalid region: %s (must be 'eu' or 'us')", region)
 			}
-
-			baseURL := c.String(baseURLFlag.Name)
 
 			config := &Config{
 				APIKey:  apiKey,

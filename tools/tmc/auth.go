@@ -6,14 +6,14 @@ import (
 	"fmt"
 
 	"github.com/mark3labs/mcp-go/mcp"
+	"github.com/mark3labs/mcp-go/server"
 	"github.com/terramate-io/terramate-mcp-server/sdk/terramate"
-	"github.com/terramate-io/terramate-mcp-server/tools/internal"
 )
 
 // Authenticate creates an MCP tool that authenticates with Terramate Cloud
 // and returns the user's organization information
-func Authenticate(client *terramate.Client) internal.Tool {
-	return internal.Tool{
+func Authenticate(client *terramate.Client) server.ServerTool {
+	return server.ServerTool{
 		Tool: mcp.Tool{
 			Name: "tmc_authenticate",
 			Description: `Authenticate with Terramate Cloud and retrieve organization membership information.

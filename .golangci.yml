@@ -1,0 +1,71 @@
+run:
+  timeout: 5m
+  tests: true
+  allow-parallel-runners: true
+
+output:
+  sort-results: true
+
+linters-settings:
+  govet:
+    enable:
+      - shadow
+  gofumpt:
+    extra-rules: false
+  gocyclo:
+    min-complexity: 15
+  goconst:
+    min-len: 3
+    min-occurrences: 3
+  gocritic:
+    enabled-checks:
+      - ifElseChain
+      - sloppyReassign
+      - appendAssign
+      - boolExprSimplify
+  revive:
+    rules:
+      - name: var-naming
+      - name: exported
+        arguments: ["checkPrivateReceivers"]
+      - name: errorf
+      - name: blank-imports
+      - name: context-as-argument
+      - name: error-return
+      - name: increment-decrement
+      - name: unexported-return
+  misspell:
+    locale: US
+  dupl:
+    threshold: 150
+
+linters:
+  disable-all: true
+  enable:
+    - govet
+    - gofumpt
+    - revive
+    - errcheck
+    - staticcheck
+    - gosimple
+    - ineffassign
+    - typecheck
+    - unused
+    - gocyclo
+    - goconst
+    - nakedret
+    - unparam
+    - misspell
+    - gocritic
+
+issues:
+  exclude-use-default: false
+  max-issues-per-linter: 0
+  max-same-issues: 0
+  exclude-rules:
+    - linters: [revive]
+      text: "exported: exported function .* should have comment or be unexported"
+    - linters: [revive]
+      text: "package-comments: should have a package comment"
+
+

@@ -1,8 +1,8 @@
 package tools
 
 import (
+	"github.com/mark3labs/mcp-go/server"
 	"github.com/terramate-io/terramate-mcp-server/sdk/terramate"
-	"github.com/terramate-io/terramate-mcp-server/tools/internal"
 	"github.com/terramate-io/terramate-mcp-server/tools/tmc"
 )
 
@@ -19,8 +19,8 @@ func New(tmcClient *terramate.Client) *ToolHandlers {
 }
 
 // Tools returns all MCP tools for Terramate Cloud
-func (th *ToolHandlers) Tools() []internal.Tool {
-	tools := []internal.Tool{}
+func (th *ToolHandlers) Tools() []server.ServerTool {
+	tools := []server.ServerTool{}
 
 	// Register authentication tool
 	tools = append(tools, tmc.Authenticate(th.tmcClient))
