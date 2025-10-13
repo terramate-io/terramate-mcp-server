@@ -34,14 +34,34 @@ type Membership struct {
 	Status         string `json:"status"` // active, inactive, invited, sso_invited, trusted
 }
 
-// Pagination represents pagination information
-type Pagination struct {
-	Page       int  `json:"page"`
-	PerPage    int  `json:"per_page"`
-	TotalPages int  `json:"total_pages"`
-	TotalCount int  `json:"total_count"`
-	HasNext    bool `json:"has_next"`
-	HasPrev    bool `json:"has_prev"`
+// PaginatedResult represents pagination information from API responses
+// Maps to PaginatedResultObject in the OpenAPI spec
+type PaginatedResult struct {
+	Total   int `json:"total"`
+	Page    int `json:"page"`
+	PerPage int `json:"per_page"`
+}
+
+// HasNextPage returns true if there are more pages after the current one
+func (p *PaginatedResult) HasNextPage() bool {
+	if p.PerPage == 0 {
+		return false
+	}
+	totalPages := (p.Total + p.PerPage - 1) / p.PerPage
+	return p.Page < totalPages
+}
+
+// HasPrevPage returns true if there are pages before the current one
+func (p *PaginatedResult) HasPrevPage() bool {
+	return p.Page > 1
+}
+
+// TotalPages returns the total number of pages
+func (p *PaginatedResult) TotalPages() int {
+	if p.PerPage == 0 {
+		return 0
+	}
+	return (p.Total + p.PerPage - 1) / p.PerPage
 }
 
 // ListOptions represents common list options
