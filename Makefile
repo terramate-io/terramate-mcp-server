@@ -29,6 +29,11 @@ GOCLEAN := $(GOCMD) clean
 GOGET := $(GOCMD) get
 GOMOD := $(GOCMD) mod
 GOFMT := gofmt
+TOOLS_BIN := $(BUILD_DIR)/tools
+GOLANGCI_LINT := $(TOOLS_BIN)/golangci-lint
+GOLANGCI_LINT_VERSION ?= v1.62.0
+GOTOOLCHAIN ?= go1.25.2
+GOLANGCI_LINT_TOOLCHAIN ?= go1.25.2
 
 # Test flags
 TEST_FLAGS := -v -race -coverprofile=coverage.out -timeout=10m
@@ -82,15 +87,21 @@ test-race: ## Run tests with race detector
 test-short: ## Run tests (skip slow tests)
 	$(GOTEST) -short ./...
 
+$(GOLANGCI_LINT): ## Install golangci-lint locally via go install
+	@echo "Installing golangci-lint..."
+	@mkdir -p $(TOOLS_BIN)
+	@GOTOOLCHAIN=$(GOLANGCI_LINT_TOOLCHAIN) GOBIN=$(abspath $(TOOLS_BIN)) $(GOCMD) install github.com/golangci/golangci-lint/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION)
+	@echo "✅ golangci-lint installed at $(GOLANGCI_LINT)"
+
 ## Lint and format targets
 
-lint: ## Run linters
-	@echo "Running linters..."
-	@golangci-lint run --timeout=5m
+lint: $(GOLANGCI_LINT) ## Run linters
+	@echo "Running golangci-lint..."
+	@$(GOLANGCI_LINT) run --config .golangci.yml --timeout=5m
 
-lint-fix: ## Run linters and auto-fix issues
-	@echo "Running linters with auto-fix..."
-	@golangci-lint run --fix --timeout=5m
+lint-fix: $(GOLANGCI_LINT) ## Run linters and auto-fix issues
+	@echo "Running golangci-lint with auto-fix..."
+	@$(GOLANGCI_LINT) run --config .golangci.yml --fix --timeout=5m
 
 fmt: ## Format code
 	@echo "Formatting code..."
@@ -108,7 +119,7 @@ fmt-check: ## Check if code is formatted
 	fi
 	@echo "✅ All files are properly formatted"
 
-vet: ## Run go vet
+vet: ## Run go vet (kept for local use)
 	@echo "Running go vet..."
 	@$(GOCMD) vet ./...
 	@echo "✅ No issues found"
@@ -204,7 +215,7 @@ info: ## Display build information
 
 ## CI targets (used by GitHub Actions)
 
-ci-lint: fmt-check vet lint ## Run all lint checks (CI)
+ci-lint: fmt-check lint ## Run all lint checks (CI)
 
 ci-test: test-coverage ## Run tests with coverage (CI)
 
