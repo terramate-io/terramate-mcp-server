@@ -5,7 +5,19 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 )
+
+// setupTestServer creates a test server and client for testing
+func setupTestServer(t *testing.T, handler http.HandlerFunc) (*Client, func()) {
+	t.Helper()
+	ts := httptest.NewServer(handler)
+	c, err := NewClient("test-api-key", WithBaseURL(ts.URL))
+	if err != nil {
+		t.Fatalf("NewClient error: %v", err)
+	}
+	return c, ts.Close
+}
 
 func TestStacksList_ParsesResponse(t *testing.T) {
 	payload := `{
@@ -37,7 +49,7 @@ func TestStacksList_ParsesResponse(t *testing.T) {
 		}
 	}`
 
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	client, cleanup := setupTestServer(t, func(w http.ResponseWriter, r *http.Request) {
 		expectedPath := "/v1/stacks/org-uuid-123"
 		if r.URL.Path != expectedPath {
 			t.Fatalf("unexpected path: got %s, want %s", r.URL.Path, expectedPath)
@@ -47,17 +59,20 @@ func TestStacksList_ParsesResponse(t *testing.T) {
 		if _, werr := w.Write([]byte(payload)); werr != nil {
 			panic(werr)
 		}
-	}))
-	defer ts.Close()
+	})
+	defer cleanup()
 
-	c, err := NewClient("key", WithBaseURL(ts.URL))
-	if err != nil {
-		t.Fatalf("NewClient error: %v", err)
-	}
-
-	result, _, err := c.Stacks.List(context.Background(), "org-uuid-123", nil)
+	result, resp, err := client.Stacks.List(context.Background(), "org-uuid-123", nil)
 	if err != nil {
 		t.Fatalf("List error: %v", err)
+	}
+
+	// Verify response object
+	if resp == nil {
+		t.Fatal("expected non-nil response")
+	}
+	if resp.HTTPResponse.StatusCode != 200 {
+		t.Errorf("expected status 200, got %d", resp.HTTPResponse.StatusCode)
 	}
 
 	if result == nil {
@@ -86,7 +101,7 @@ func TestStacksList_ParsesResponse(t *testing.T) {
 }
 
 func TestStacksList_WithOptions(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	client, cleanup := setupTestServer(t, func(w http.ResponseWriter, r *http.Request) {
 		// Verify query parameters
 		query := r.URL.Query()
 		if query.Get("page") != "2" {
@@ -108,13 +123,8 @@ func TestStacksList_WithOptions(t *testing.T) {
 		if _, werr := w.Write([]byte(payload)); werr != nil {
 			panic(werr)
 		}
-	}))
-	defer ts.Close()
-
-	c, err := NewClient("key", WithBaseURL(ts.URL))
-	if err != nil {
-		t.Fatalf("NewClient error: %v", err)
-	}
+	})
+	defer cleanup()
 
 	opts := &StacksListOptions{
 		ListOptions: ListOptions{
@@ -125,24 +135,36 @@ func TestStacksList_WithOptions(t *testing.T) {
 		Search: "vpc",
 	}
 
-	_, _, err = c.Stacks.List(context.Background(), "org-uuid", opts)
+	_, _, err := client.Stacks.List(context.Background(), "org-uuid", opts)
 	if err != nil {
 		t.Fatalf("List error: %v", err)
 	}
 }
 
-func TestStacksList_RequiresOrgUUID(t *testing.T) {
+func TestStacksList_Validation(t *testing.T) {
 	c, err := NewClient("key")
 	if err != nil {
 		t.Fatalf("NewClient error: %v", err)
 	}
 
-	_, _, err = c.Stacks.List(context.Background(), "", nil)
-	if err == nil {
-		t.Fatal("expected error when org_uuid is empty")
+	tests := []struct {
+		name      string
+		orgUUID   string
+		wantError string
+	}{
+		{"empty org UUID", "", "organization UUID is required"},
 	}
-	if err.Error() != "organization UUID is required" {
-		t.Errorf("unexpected error message: %v", err)
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, _, err := c.Stacks.List(context.Background(), tt.orgUUID, nil)
+			if err == nil {
+				t.Fatal("expected error")
+			}
+			if err.Error() != tt.wantError {
+				t.Errorf("got error %q, want %q", err.Error(), tt.wantError)
+			}
+		})
 	}
 }
 
@@ -167,7 +189,7 @@ func TestStacksGet_ParsesResponse(t *testing.T) {
 		"seen_at": "2024-01-15T12:00:00Z"
 	}`
 
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	client, cleanup := setupTestServer(t, func(w http.ResponseWriter, r *http.Request) {
 		expectedPath := "/v1/stacks/org-uuid-123/456"
 		if r.URL.Path != expectedPath {
 			t.Fatalf("unexpected path: got %s, want %s", r.URL.Path, expectedPath)
@@ -177,17 +199,20 @@ func TestStacksGet_ParsesResponse(t *testing.T) {
 		if _, werr := w.Write([]byte(payload)); werr != nil {
 			panic(werr)
 		}
-	}))
-	defer ts.Close()
+	})
+	defer cleanup()
 
-	c, err := NewClient("key", WithBaseURL(ts.URL))
-	if err != nil {
-		t.Fatalf("NewClient error: %v", err)
-	}
-
-	stack, _, err := c.Stacks.Get(context.Background(), "org-uuid-123", 456)
+	stack, resp, err := client.Stacks.Get(context.Background(), "org-uuid-123", 456)
 	if err != nil {
 		t.Fatalf("Get error: %v", err)
+	}
+
+	// Verify response object
+	if resp == nil {
+		t.Fatal("expected non-nil response")
+	}
+	if resp.HTTPResponse.StatusCode != 200 {
+		t.Errorf("expected status 200, got %d", resp.HTTPResponse.StatusCode)
 	}
 
 	if stack == nil {
@@ -204,41 +229,37 @@ func TestStacksGet_ParsesResponse(t *testing.T) {
 	}
 }
 
-func TestStacksGet_RequiresOrgUUID(t *testing.T) {
+func TestStacksGet_Validation(t *testing.T) {
 	c, err := NewClient("key")
 	if err != nil {
 		t.Fatalf("NewClient error: %v", err)
 	}
 
-	_, _, err = c.Stacks.Get(context.Background(), "", 123)
-	if err == nil {
-		t.Fatal("expected error when org_uuid is empty")
+	tests := []struct {
+		name      string
+		orgUUID   string
+		stackID   int
+		wantError string
+	}{
+		{"empty org UUID", "", 123, "organization UUID is required"},
+		{"zero stack ID", "org-uuid", 0, "stack ID must be positive"},
+		{"negative stack ID", "org-uuid", -1, "stack ID must be positive"},
 	}
-	if err.Error() != "organization UUID is required" {
-		t.Errorf("unexpected error message: %v", err)
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, _, err := c.Stacks.Get(context.Background(), tt.orgUUID, tt.stackID)
+			if err == nil {
+				t.Fatal("expected error")
+			}
+			if err.Error() != tt.wantError {
+				t.Errorf("got error %q, want %q", err.Error(), tt.wantError)
+			}
+		})
 	}
 }
 
-func TestStacksGet_RequiresPositiveStackID(t *testing.T) {
-	c, err := NewClient("key")
-	if err != nil {
-		t.Fatalf("NewClient error: %v", err)
-	}
-
-	_, _, err = c.Stacks.Get(context.Background(), "org-uuid", 0)
-	if err == nil {
-		t.Fatal("expected error when stack_id is 0")
-	}
-	if err.Error() != "stack ID must be positive" {
-		t.Errorf("unexpected error message: %v", err)
-	}
-
-	_, _, err = c.Stacks.Get(context.Background(), "org-uuid", -1)
-	if err == nil {
-		t.Fatal("expected error when stack_id is negative")
-	}
-}
-
+//nolint:gocyclo // High complexity due to comprehensive field assertions
 func TestStacksGet_ParsesAllFields(t *testing.T) {
 	payload := `{
 		"stack_id": 789,
@@ -279,23 +300,26 @@ func TestStacksGet_ParsesAllFields(t *testing.T) {
 		}
 	}`
 
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	client, cleanup := setupTestServer(t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(200)
 		if _, werr := w.Write([]byte(payload)); werr != nil {
 			panic(werr)
 		}
-	}))
-	defer ts.Close()
+	})
+	defer cleanup()
 
-	c, err := NewClient("key", WithBaseURL(ts.URL))
-	if err != nil {
-		t.Fatalf("NewClient error: %v", err)
-	}
-
-	stack, _, err := c.Stacks.Get(context.Background(), "org-uuid", 789)
+	stack, resp, err := client.Stacks.Get(context.Background(), "org-uuid", 789)
 	if err != nil {
 		t.Fatalf("Get error: %v", err)
+	}
+
+	// Verify response object
+	if resp == nil {
+		t.Fatal("expected non-nil response")
+	}
+	if resp.HTTPResponse.StatusCode != 200 {
+		t.Errorf("expected status 200, got %d", resp.HTTPResponse.StatusCode)
 	}
 
 	// Test all fields
@@ -343,5 +367,257 @@ func TestStacksGet_ParsesAllFields(t *testing.T) {
 	}
 	if stack.Resources.PolicyCheck.Counters.SeverityMediumCount != 1 {
 		t.Errorf("unexpected severity_medium_count: got %d, want 1", stack.Resources.PolicyCheck.Counters.SeverityMediumCount)
+	}
+}
+
+//nolint:gocyclo // High complexity due to comprehensive query parameter verification
+func TestStacksList_WithAllQueryParameters(t *testing.T) {
+	draft := true
+	client, cleanup := setupTestServer(t, func(w http.ResponseWriter, r *http.Request) {
+		query := r.URL.Query()
+
+		// Verify all query parameters
+		if query.Get("repository") != "github.com/acme/repo1,github.com/acme/repo2" {
+			t.Errorf("unexpected repository: got %s", query.Get("repository"))
+		}
+		if query.Get("target") != "production,staging" {
+			t.Errorf("unexpected target: got %s", query.Get("target"))
+		}
+		if query.Get("deployment_status") != "ok,failed" {
+			t.Errorf("unexpected deployment_status: got %s", query.Get("deployment_status"))
+		}
+		if query.Get("drift_status") != "drifted" {
+			t.Errorf("unexpected drift_status: got %s", query.Get("drift_status"))
+		}
+		if query.Get("draft") != "true" {
+			t.Errorf("unexpected draft: got %s", query.Get("draft"))
+		}
+		if query.Get("is_archived") != "false,true" {
+			t.Errorf("unexpected is_archived: got %s", query.Get("is_archived"))
+		}
+		if query.Get("meta_id") != "vpc-prod-01" {
+			t.Errorf("unexpected meta_id: got %s", query.Get("meta_id"))
+		}
+		if query.Get("deployment_uuid") != "deploy-123" {
+			t.Errorf("unexpected deployment_uuid: got %s", query.Get("deployment_uuid"))
+		}
+
+		// Verify meta_tag uses Add (multiple params)
+		metaTags := query["meta_tag"]
+		if len(metaTags) != 2 || metaTags[0] != "prod" || metaTags[1] != "network" {
+			t.Errorf("unexpected meta_tag: got %v", metaTags)
+		}
+
+		if query.Get("policy_severity") != "high,medium" {
+			t.Errorf("unexpected policy_severity: got %s", query.Get("policy_severity"))
+		}
+
+		// Verify sort uses Add (multiple params)
+		sorts := query["sort"]
+		if len(sorts) != 2 || sorts[0] != "name" || sorts[1] != "created_at" {
+			t.Errorf("unexpected sort: got %v", sorts)
+		}
+
+		payload := `{"stacks":[],"paginated_result":{"page":1,"per_page":10,"total":0}}`
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		if _, werr := w.Write([]byte(payload)); werr != nil {
+			panic(werr)
+		}
+	})
+	defer cleanup()
+
+	opts := &StacksListOptions{
+		Repository:       []string{"github.com/acme/repo1", "github.com/acme/repo2"},
+		Target:           []string{"production", "staging"},
+		DeploymentStatus: []string{"ok", "failed"},
+		DriftStatus:      []string{"drifted"},
+		Draft:            &draft,
+		IsArchived:       []bool{false, true},
+		MetaID:           "vpc-prod-01",
+		DeploymentUUID:   "deploy-123",
+		MetaTag:          []string{"prod", "network"},
+		PolicySeverity:   []string{"high", "medium"},
+		Sort:             []string{"name", "created_at"},
+	}
+
+	_, _, err := client.Stacks.List(context.Background(), "org-uuid", opts)
+	if err != nil {
+		t.Fatalf("List error: %v", err)
+	}
+}
+
+// Test error responses
+func TestStacksList_HandlesAPIError(t *testing.T) {
+	client, cleanup := setupTestServer(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(404)
+		if _, werr := w.Write([]byte(`{"error":"organization not found"}`)); werr != nil {
+			panic(werr)
+		}
+	})
+	defer cleanup()
+
+	_, _, err := client.Stacks.List(context.Background(), "invalid-uuid", nil)
+	if err == nil {
+		t.Fatal("expected error for 404 response")
+	}
+
+	// Check that error is an APIError
+	if apiErr, ok := err.(*APIError); ok {
+		if apiErr.StatusCode != 404 {
+			t.Errorf("expected status code 404, got %d", apiErr.StatusCode)
+		}
+		if apiErr.Message != "organization not found" {
+			t.Errorf("unexpected error message: %s", apiErr.Message)
+		}
+	} else {
+		t.Errorf("expected APIError type, got %T", err)
+	}
+}
+
+func TestStacksGet_HandlesAPIError(t *testing.T) {
+	client, cleanup := setupTestServer(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(404)
+		if _, werr := w.Write([]byte(`{"error":"stack not found"}`)); werr != nil {
+			panic(werr)
+		}
+	})
+	defer cleanup()
+
+	_, _, err := client.Stacks.Get(context.Background(), "org-uuid", 999)
+	if err == nil {
+		t.Fatal("expected error for 404 response")
+	}
+
+	if apiErr, ok := err.(*APIError); ok {
+		if apiErr.StatusCode != 404 {
+			t.Errorf("expected status code 404, got %d", apiErr.StatusCode)
+		}
+	} else {
+		t.Errorf("expected APIError type, got %T", err)
+	}
+}
+
+// Test authentication headers
+func TestStacksList_SendsAuthHeader(t *testing.T) {
+	client, cleanup := setupTestServer(t, func(w http.ResponseWriter, r *http.Request) {
+		username, password, ok := r.BasicAuth()
+		if !ok {
+			t.Fatal("expected basic auth header")
+		}
+		if username != "test-api-key" {
+			t.Errorf("expected username 'test-api-key', got %s", username)
+		}
+		if password != "" {
+			t.Errorf("expected empty password, got %s", password)
+		}
+
+		payload := `{"stacks":[],"paginated_result":{"page":1,"per_page":10,"total":0}}`
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		if _, werr := w.Write([]byte(payload)); werr != nil {
+			panic(werr)
+		}
+	})
+	defer cleanup()
+
+	_, _, err := client.Stacks.List(context.Background(), "org-uuid", nil)
+	if err != nil {
+		t.Fatalf("List error: %v", err)
+	}
+}
+
+func TestStacksGet_SendsAuthHeader(t *testing.T) {
+	client, cleanup := setupTestServer(t, func(w http.ResponseWriter, r *http.Request) {
+		username, password, ok := r.BasicAuth()
+		if !ok {
+			t.Fatal("expected basic auth header")
+		}
+		if username != "test-api-key" {
+			t.Errorf("expected username 'test-api-key', got %s", username)
+		}
+		if password != "" {
+			t.Errorf("expected empty password, got %s", password)
+		}
+
+		payload := `{
+			"stack_id": 123,
+			"repository": "github.com/acme/repo",
+			"path": "/stacks/test",
+			"default_branch": "main",
+			"meta_id": "test",
+			"status": "ok",
+			"deployment_status": "ok",
+			"drift_status": "ok",
+			"draft": false,
+			"is_archived": false,
+			"created_at": "2024-01-01T00:00:00Z",
+			"updated_at": "2024-01-01T00:00:00Z",
+			"seen_at": "2024-01-01T00:00:00Z"
+		}`
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		if _, werr := w.Write([]byte(payload)); werr != nil {
+			panic(werr)
+		}
+	})
+	defer cleanup()
+
+	_, _, err := client.Stacks.Get(context.Background(), "org-uuid", 123)
+	if err != nil {
+		t.Fatalf("Get error: %v", err)
+	}
+}
+
+// Test context cancellation
+func TestStacksList_RespectsContextCancellation(t *testing.T) {
+	client, cleanup := setupTestServer(t, func(w http.ResponseWriter, r *http.Request) {
+		// Wait for context cancellation
+		<-r.Context().Done()
+	})
+	defer cleanup()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // Cancel immediately
+
+	_, _, err := client.Stacks.List(ctx, "org-uuid", nil)
+	if err == nil {
+		t.Fatal("expected error from canceled context")
+	}
+}
+
+func TestStacksGet_RespectsContextCancellation(t *testing.T) {
+	client, cleanup := setupTestServer(t, func(w http.ResponseWriter, r *http.Request) {
+		// Wait for context cancellation
+		<-r.Context().Done()
+	})
+	defer cleanup()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // Cancel immediately
+
+	_, _, err := client.Stacks.Get(ctx, "org-uuid", 123)
+	if err == nil {
+		t.Fatal("expected error from canceled context")
+	}
+}
+
+// Test context timeout
+func TestStacksList_RespectsContextTimeout(t *testing.T) {
+	client, cleanup := setupTestServer(t, func(w http.ResponseWriter, r *http.Request) {
+		// Simulate slow response
+		time.Sleep(100 * time.Millisecond)
+		w.WriteHeader(200)
+	})
+	defer cleanup()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
+	defer cancel()
+
+	_, _, err := client.Stacks.List(ctx, "org-uuid", nil)
+	if err == nil {
+		t.Fatal("expected timeout error")
 	}
 }

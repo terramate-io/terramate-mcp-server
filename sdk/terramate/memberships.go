@@ -3,6 +3,7 @@ package terramate
 import (
 	"context"
 	"fmt"
+	"net/http"
 )
 
 // MembershipsService handles communication with the memberships related
@@ -22,7 +23,7 @@ type MembershipsService struct {
 func (s *MembershipsService) List(ctx context.Context) ([]Membership, *Response, error) {
 	path := "/v1/memberships"
 
-	req, err := s.client.newRequest(ctx, "GET", path, nil)
+	req, err := s.client.newRequest(ctx, http.MethodGet, path, nil)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create request: %w", err)
 	}

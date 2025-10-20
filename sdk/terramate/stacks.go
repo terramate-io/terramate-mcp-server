@@ -90,7 +90,6 @@ func (opts *StacksListOptions) addArrayParams(query url.Values) {
 	}
 }
 
-
 // List retrieves all stacks for an organization.
 //
 // GET /v1/stacks/{org_uuid}
