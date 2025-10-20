@@ -93,7 +93,7 @@ type Stack struct {
 	UnarchivedByUserUUID string          `json:"unarchived_by_user_uuid,omitempty"`
 	CreatedAt            time.Time       `json:"created_at"`
 	UpdatedAt            time.Time       `json:"updated_at"`
-	SeenAt               time.Time       `json:"seen_at"`
+	SeenAt               *time.Time      `json:"seen_at,omitempty"`
 	RelatedStacks        []RelatedStack  `json:"related_stacks,omitempty"`
 	Resources            *StackResources `json:"resources,omitempty"`
 }
