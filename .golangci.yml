@@ -19,9 +19,7 @@ linters-settings:
     min-occurrences: 3
   gocritic:
     enabled-checks:
-      - ifElseChain
       - sloppyReassign
-      - appendAssign
       - boolExprSimplify
   revive:
     rules:

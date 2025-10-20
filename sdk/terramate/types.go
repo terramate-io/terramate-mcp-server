@@ -44,7 +44,7 @@ type PaginatedResult struct {
 
 // HasNextPage returns true if there are more pages after the current one
 func (p *PaginatedResult) HasNextPage() bool {
-	if p.PerPage == 0 {
+	if p.PerPage == 0 || p.Page < 1 {
 		return false
 	}
 	totalPages := (p.Total + p.PerPage - 1) / p.PerPage
@@ -68,4 +68,51 @@ func (p *PaginatedResult) TotalPages() int {
 type ListOptions struct {
 	Page    int
 	PerPage int
+}
+
+// Stack represents a Terramate stack
+type Stack struct {
+	StackID          int       `json:"stack_id"`
+	MetaID           string    `json:"meta_id"`
+	MetaName         string    `json:"meta_name"`
+	MetaPath         string    `json:"meta_path"`
+	MetaDescription  string    `json:"meta_description,omitempty"`
+	Repository       string    `json:"repository"`
+	Target           string    `json:"target,omitempty"`
+	Status           string    `json:"status,omitempty"`
+	DeploymentStatus string    `json:"deployment_status,omitempty"`
+	DriftStatus      string    `json:"drift_status,omitempty"`
+	CreatedAt        time.Time `json:"created_at"`
+	UpdatedAt        time.Time `json:"updated_at"`
+	SeenAt           time.Time `json:"seen_at,omitempty"`
+}
+
+// StacksListOptions contains options for listing stacks
+type StacksListOptions struct {
+	// Pagination
+	Page    int
+	PerPage int
+
+	// Filters
+	Repository       []string
+	Target           []string
+	Status           []string
+	DeploymentStatus []string
+	DriftStatus      []string
+	Draft            *bool
+	IsArchived       []bool
+	Search           string
+	MetaID           string
+	MetaTag          []string
+	DeploymentUUID   string
+	PolicySeverity   []string
+
+	// Sorting
+	Sort []string
+}
+
+// StacksListResponse represents the response from listing stacks
+type StacksListResponse struct {
+	Stacks     []Stack         `json:"stacks"`
+	Pagination PaginatedResult `json:"pagination"`
 }

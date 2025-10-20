@@ -32,6 +32,7 @@ type Client struct {
 
 	// Services
 	Memberships *MembershipsService
+	Stacks      *StacksService
 }
 
 // ClientOption is a functional option for configuring the Client
@@ -67,6 +68,7 @@ func NewClient(apiKey string, opts ...ClientOption) (*Client, error) {
 
 	// Initialize services
 	client.Memberships = &MembershipsService{client: client}
+	client.Stacks = &StacksService{client: client}
 
 	return client, nil
 }
@@ -128,6 +130,8 @@ func WithTimeout(timeout time.Duration) ClientOption {
 }
 
 // newRequest creates a new HTTP request with common headers
+//
+//nolint:unparam // method parameter will be used for POST/PUT/DELETE in future endpoints
 func (c *Client) newRequest(ctx context.Context, method, path string, body io.Reader) (*http.Request, error) {
 	// Build full URL
 	u, err := c.baseURL.Parse(path)

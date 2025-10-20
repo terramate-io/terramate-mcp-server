@@ -38,6 +38,16 @@ func TestPaginatedResult_HasNextPage(t *testing.T) {
 			result:   PaginatedResult{Total: 0, Page: 1, PerPage: 10},
 			expected: false,
 		},
+		{
+			name:     "zero page",
+			result:   PaginatedResult{Total: 100, Page: 0, PerPage: 10},
+			expected: false,
+		},
+		{
+			name:     "negative page",
+			result:   PaginatedResult{Total: 100, Page: -1, PerPage: 10},
+			expected: false,
+		},
 	}
 
 	for _, tt := range tests {
