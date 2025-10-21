@@ -10,7 +10,7 @@ import (
 	"github.com/terramate-io/terramate-mcp-server/sdk/terramate"
 )
 
-// ListStacks creates an MCP tool that lists stacks in a Terramate Cloud organization
+// ListStacks creates an MCP tool that lists stacks in a Terramate Cloud organization.
 func ListStacks(client *terramate.Client) server.ServerTool {
 	return server.ServerTool{
 		Tool: mcp.Tool{
@@ -34,7 +34,11 @@ Supported filters:
 - policy_severity: Filter by policy check results (missing, none, passed, low, medium, high)
 - page: Page number for pagination (default: 1)
 - per_page: Number of items per page (default: 20)
-- sort: Sort fields (can specify multiple)`,
+- sort: Sort fields (can specify multiple)
+
+Response includes:
+- stacks: Array of stack objects with metadata, status, tags, and resource information
+- paginated_result: Pagination info (total, page, per_page)`,
 			InputSchema: mcp.ToolInputSchema{
 				Type: "object",
 				Properties: map[string]interface{}{
@@ -134,30 +138,37 @@ Supported filters:
 			},
 		},
 		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-			// Parse organization_uuid
+			// Parse organization_uuid.
 			orgUUID, err := request.RequireString("organization_uuid")
 			if err != nil {
-				return mcp.NewToolResultError("organization_uuid is required and must be a string"), nil
+				return mcp.NewToolResultError("Organization UUID is required and must be a string."), nil
 			}
 
-			// Build options from request
+			// Build options from request.
 			opts := &terramate.StacksListOptions{}
 
-			// Get pagination parameters
-			opts.Page = request.GetInt("page", 0)
-			opts.PerPage = request.GetInt("per_page", 0)
+			// Get pagination parameters with validation.
+			if page := request.GetInt("page", 0); page > 0 {
+				opts.Page = page
+			}
+			if perPage := request.GetInt("per_page", 0); perPage > 0 {
+				if perPage > 100 {
+					return mcp.NewToolResultError("Per page value must not exceed 100."), nil
+				}
+				opts.PerPage = perPage
+			}
 
-			// Get string parameters
+			// Get string parameters.
 			opts.Search = request.GetString("search", "")
 			opts.MetaID = request.GetString("meta_id", "")
 			opts.DeploymentUUID = request.GetString("deployment_uuid", "")
 
-			// Get draft parameter (optional boolean pointer)
+			// Get draft parameter (optional boolean pointer).
 			if draft, draftErr := request.RequireBool("draft"); draftErr == nil {
 				opts.Draft = &draft
 			}
 
-			// Get string array parameters
+			// Get string array parameters.
 			opts.Repository = request.GetStringSlice("repository", nil)
 			opts.Target = request.GetStringSlice("target", nil)
 			opts.Status = request.GetStringSlice("status", nil)
@@ -167,10 +178,10 @@ Supported filters:
 			opts.PolicySeverity = request.GetStringSlice("policy_severity", nil)
 			opts.Sort = request.GetStringSlice("sort", nil)
 
-			// Get boolean array parameter
+			// Get boolean array parameter.
 			opts.IsArchived = request.GetBoolSlice("is_archived", nil)
 
-			// Call the API
+			// Call the API.
 			result, _, err := client.Stacks.List(ctx, orgUUID, opts)
 			if err != nil {
 				if apiErr, ok := err.(*terramate.APIError); ok {
@@ -182,7 +193,7 @@ Supported filters:
 				return mcp.NewToolResultError(fmt.Sprintf("Failed to list stacks: %v", err)), nil
 			}
 
-			// Format response
+			// Format response.
 			jsonData, err := json.MarshalIndent(result, "", "  ")
 			if err != nil {
 				return mcp.NewToolResultError(fmt.Sprintf("Failed to marshal response: %v", err)), nil
@@ -193,7 +204,7 @@ Supported filters:
 	}
 }
 
-// GetStack creates an MCP tool that retrieves a specific stack by ID
+// GetStack creates an MCP tool that retrieves a specific stack by ID.
 func GetStack(client *terramate.Client) server.ServerTool {
 	return server.ServerTool{
 		Tool: mcp.Tool{
@@ -206,7 +217,12 @@ This tool retrieves detailed information about a specific stack, including:
 - Related stacks (from other targets with the same repository and meta_id)
 - Resource information and policy check results
 
-Use tmc_authenticate first to get the organization UUID, and tmc_list_stacks to find stack IDs.`,
+Use tmc_authenticate first to get the organization UUID, and tmc_list_stacks to find stack IDs.
+
+Response includes:
+- Full stack object with all metadata fields
+- related_stacks: Array of related stacks from other targets
+- resources: Resource count and policy check results`,
 			InputSchema: mcp.ToolInputSchema{
 				Type: "object",
 				Properties: map[string]interface{}{
@@ -223,22 +239,22 @@ Use tmc_authenticate first to get the organization UUID, and tmc_list_stacks to 
 			},
 		},
 		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-			// Parse organization_uuid
+			// Parse organization_uuid.
 			orgUUID, err := request.RequireString("organization_uuid")
 			if err != nil {
-				return mcp.NewToolResultError("organization_uuid is required and must be a string"), nil
+				return mcp.NewToolResultError("Organization UUID is required and must be a string."), nil
 			}
 
-			// Parse stack_id
+			// Parse stack_id.
 			stackID, err := request.RequireInt("stack_id")
 			if err != nil {
-				return mcp.NewToolResultError("stack_id is required and must be a number"), nil
+				return mcp.NewToolResultError("Stack ID is required and must be a number."), nil
 			}
 			if stackID <= 0 {
-				return mcp.NewToolResultError("stack_id must be positive"), nil
+				return mcp.NewToolResultError("Stack ID must be positive."), nil
 			}
 
-			// Call the API
+			// Call the API.
 			stack, _, err := client.Stacks.Get(ctx, orgUUID, stackID)
 			if err != nil {
 				if apiErr, ok := err.(*terramate.APIError); ok {
@@ -246,14 +262,14 @@ Use tmc_authenticate first to get the organization UUID, and tmc_list_stacks to 
 						return mcp.NewToolResultError(terramate.ErrAuthenticationFailed), nil
 					}
 					if apiErr.IsNotFound() {
-						return mcp.NewToolResultError(fmt.Sprintf("Stack with ID %d not found", stackID)), nil
+						return mcp.NewToolResultError(fmt.Sprintf("Stack with ID %d not found.", stackID)), nil
 					}
 					return mcp.NewToolResultError(fmt.Sprintf("API error: %s", apiErr.Error())), nil
 				}
 				return mcp.NewToolResultError(fmt.Sprintf("Failed to get stack: %v", err)), nil
 			}
 
-			// Format response
+			// Format response.
 			jsonData, err := json.MarshalIndent(stack, "", "  ")
 			if err != nil {
 				return mcp.NewToolResultError(fmt.Sprintf("Failed to marshal response: %v", err)), nil

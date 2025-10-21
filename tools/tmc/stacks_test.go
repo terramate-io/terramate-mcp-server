@@ -170,7 +170,77 @@ func TestListStacks_MissingOrgUUID(t *testing.T) {
 	if !ok {
 		t.Fatal("expected TextContent")
 	}
-	if textContent.Text != "organization_uuid is required and must be a string" {
+	if textContent.Text != "Organization UUID is required and must be a string." {
+		t.Fatalf("unexpected error message: %s", textContent.Text)
+	}
+}
+
+func TestListStacks_WithDraftFilter(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		query := r.URL.Query()
+		if query.Get("draft") != "true" {
+			t.Errorf("expected draft=true, got %s", query.Get("draft"))
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		if _, err := w.Write([]byte(`{"stacks":[],"paginated_result":{"total":0,"page":1,"per_page":20}}`)); err != nil {
+			panic(err)
+		}
+	}))
+	defer ts.Close()
+
+	c, err := terramate.NewClient("key", terramate.WithBaseURL(ts.URL))
+	if err != nil {
+		t.Fatalf("NewClient error: %v", err)
+	}
+
+	tool := ListStacks(c)
+	result, err := tool.Handler(context.Background(), mcp.CallToolRequest{
+		Params: mcp.CallToolParams{
+			Arguments: map[string]interface{}{
+				"organization_uuid": "org-uuid",
+				"draft":             true,
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("Handler error: %v", err)
+	}
+	if result.IsError {
+		textContent, ok := mcp.AsTextContent(result.Content[0])
+		if !ok {
+			t.Fatal("expected TextContent")
+		}
+		t.Fatalf("unexpected error result: %v", textContent.Text)
+	}
+}
+
+func TestListStacks_InvalidPerPage(t *testing.T) {
+	c, err := terramate.NewClient("key")
+	if err != nil {
+		t.Fatalf("NewClient error: %v", err)
+	}
+
+	tool := ListStacks(c)
+	result, err := tool.Handler(context.Background(), mcp.CallToolRequest{
+		Params: mcp.CallToolParams{
+			Arguments: map[string]interface{}{
+				"organization_uuid": "org-uuid",
+				"per_page":          float64(150),
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("Handler error: %v", err)
+	}
+	if !result.IsError {
+		t.Fatal("expected error result for per_page > 100")
+	}
+	textContent, ok := mcp.AsTextContent(result.Content[0])
+	if !ok {
+		t.Fatal("expected TextContent")
+	}
+	if textContent.Text != "Per page value must not exceed 100." {
 		t.Fatalf("unexpected error message: %s", textContent.Text)
 	}
 }
@@ -320,7 +390,7 @@ func TestGetStack_MissingOrgUUID(t *testing.T) {
 	if !ok {
 		t.Fatal("expected TextContent")
 	}
-	if textContent.Text != "organization_uuid is required and must be a string" {
+	if textContent.Text != "Organization UUID is required and must be a string." {
 		t.Fatalf("unexpected error message: %s", textContent.Text)
 	}
 }
@@ -349,7 +419,7 @@ func TestGetStack_MissingStackID(t *testing.T) {
 	if !ok {
 		t.Fatal("expected TextContent")
 	}
-	if textContent.Text != "stack_id is required and must be a number" {
+	if textContent.Text != "Stack ID is required and must be a number." {
 		t.Fatalf("unexpected error message: %s", textContent.Text)
 	}
 }
@@ -379,7 +449,7 @@ func TestGetStack_InvalidStackID(t *testing.T) {
 	if !ok {
 		t.Fatal("expected TextContent")
 	}
-	if textContent.Text != "stack_id must be positive" {
+	if textContent.Text != "Stack ID must be positive." {
 		t.Fatalf("unexpected error message: %s", textContent.Text)
 	}
 }
@@ -418,7 +488,7 @@ func TestGetStack_NotFound(t *testing.T) {
 	if !ok {
 		t.Fatal("expected TextContent")
 	}
-	if textContent.Text != "Stack with ID 999 not found" {
+	if textContent.Text != "Stack with ID 999 not found." {
 		t.Fatalf("unexpected error message: %s", textContent.Text)
 	}
 }
