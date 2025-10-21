@@ -25,9 +25,11 @@ func (th *ToolHandlers) Tools() []server.ServerTool {
 	// Register authentication tool
 	tools = append(tools, tmc.Authenticate(th.tmcClient))
 
+	// Register stacks tools
+	tools = append(tools, tmc.ListStacks(th.tmcClient))
+	tools = append(tools, tmc.GetStack(th.tmcClient))
+
 	// TODO: Add more tools here
-	// tools = append(tools, tmc.ListStacks(th.tmcClient))
-	// tools = append(tools, tmc.GetStack(th.tmcClient))
 	// tools = append(tools, tmc.ListDeployments(th.tmcClient))
 	// tools = append(tools, tmc.ListDrifts(th.tmcClient))
 	// tools = append(tools, tmc.ListAlerts(th.tmcClient))
