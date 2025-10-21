@@ -14,6 +14,7 @@ func TestNew(t *testing.T) {
 	th := New(c)
 	if th == nil {
 		t.Fatal("expected non-nil ToolHandlers")
+		return
 	}
 	if th.tmcClient == nil {
 		t.Fatal("expected tmcClient to be set")

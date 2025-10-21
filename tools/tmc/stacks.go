@@ -153,7 +153,7 @@ Supported filters:
 			opts.DeploymentUUID = request.GetString("deployment_uuid", "")
 
 			// Get draft parameter (optional boolean pointer)
-			if draft, err := request.RequireBool("draft"); err == nil {
+			if draft, draftErr := request.RequireBool("draft"); draftErr == nil {
 				opts.Draft = &draft
 			}
 
@@ -175,7 +175,7 @@ Supported filters:
 			if err != nil {
 				if apiErr, ok := err.(*terramate.APIError); ok {
 					if apiErr.IsUnauthorized() {
-						return mcp.NewToolResultError("Authentication failed: Invalid API key"), nil
+						return mcp.NewToolResultError(terramate.ErrAuthenticationFailed), nil
 					}
 					return mcp.NewToolResultError(fmt.Sprintf("API error: %s", apiErr.Error())), nil
 				}
@@ -243,7 +243,7 @@ Use tmc_authenticate first to get the organization UUID, and tmc_list_stacks to 
 			if err != nil {
 				if apiErr, ok := err.(*terramate.APIError); ok {
 					if apiErr.IsUnauthorized() {
-						return mcp.NewToolResultError("Authentication failed: Invalid API key"), nil
+						return mcp.NewToolResultError(terramate.ErrAuthenticationFailed), nil
 					}
 					if apiErr.IsNotFound() {
 						return mcp.NewToolResultError(fmt.Sprintf("Stack with ID %d not found", stackID)), nil

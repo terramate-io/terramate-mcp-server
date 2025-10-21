@@ -33,6 +33,7 @@ func TestNewServer_Success(t *testing.T) {
 	}
 	if s == nil {
 		t.Fatal("expected server instance")
+		return
 	}
 	if s.mcp == nil {
 		t.Fatal("expected MCP server to be initialized")

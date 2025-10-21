@@ -5,6 +5,11 @@ import (
 	"net/http"
 )
 
+const (
+	// ErrAuthenticationFailed is the error message returned when API authentication fails
+	ErrAuthenticationFailed = "Authentication failed: Invalid API key"
+)
+
 // APIError represents an error returned by the Terramate Cloud API
 type APIError struct {
 	StatusCode int

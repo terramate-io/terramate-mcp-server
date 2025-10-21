@@ -38,7 +38,7 @@ Use this tool first before calling other Terramate Cloud operations to get the o
 				// Check if it's an API error
 				if apiErr, ok := err.(*terramate.APIError); ok {
 					if apiErr.IsUnauthorized() {
-						return mcp.NewToolResultError("Authentication failed: Invalid API key"), nil
+						return mcp.NewToolResultError(terramate.ErrAuthenticationFailed), nil
 					}
 					return mcp.NewToolResultError(fmt.Sprintf("API error: %s", apiErr.Error())), nil
 				}

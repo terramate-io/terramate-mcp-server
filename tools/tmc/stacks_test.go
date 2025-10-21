@@ -208,7 +208,7 @@ func TestListStacks_Unauthorized(t *testing.T) {
 	if !ok {
 		t.Fatal("expected TextContent")
 	}
-	if textContent.Text != "Authentication failed: Invalid API key" {
+	if textContent.Text != terramate.ErrAuthenticationFailed {
 		t.Fatalf("unexpected error message: %s", textContent.Text)
 	}
 }
@@ -457,7 +457,7 @@ func TestGetStack_Unauthorized(t *testing.T) {
 	if !ok {
 		t.Fatal("expected TextContent")
 	}
-	if textContent.Text != "Authentication failed: Invalid API key" {
+	if textContent.Text != terramate.ErrAuthenticationFailed {
 		t.Fatalf("unexpected error message: %s", textContent.Text)
 	}
 }
