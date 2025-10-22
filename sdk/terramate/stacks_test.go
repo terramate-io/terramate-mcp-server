@@ -70,6 +70,7 @@ func TestStacksList_ParsesResponse(t *testing.T) {
 	// Verify response object
 	if resp == nil {
 		t.Fatal("expected non-nil response")
+		return
 	}
 	if resp.HTTPResponse.StatusCode != 200 {
 		t.Errorf("expected status 200, got %d", resp.HTTPResponse.StatusCode)
@@ -77,6 +78,7 @@ func TestStacksList_ParsesResponse(t *testing.T) {
 
 	if result == nil {
 		t.Fatal("expected non-nil result")
+		return
 	}
 	if len(result.Stacks) != 1 {
 		t.Fatalf("expected 1 stack, got %d", len(result.Stacks))
@@ -210,6 +212,7 @@ func TestStacksGet_ParsesResponse(t *testing.T) {
 	// Verify response object
 	if resp == nil {
 		t.Fatal("expected non-nil response")
+		return
 	}
 	if resp.HTTPResponse.StatusCode != 200 {
 		t.Errorf("expected status 200, got %d", resp.HTTPResponse.StatusCode)
@@ -217,6 +220,7 @@ func TestStacksGet_ParsesResponse(t *testing.T) {
 
 	if stack == nil {
 		t.Fatal("expected non-nil stack")
+		return
 	}
 	if stack.StackID != 456 {
 		t.Errorf("unexpected stack_id: got %d, want 456", stack.StackID)
@@ -317,6 +321,7 @@ func TestStacksGet_ParsesAllFields(t *testing.T) {
 	// Verify response object
 	if resp == nil {
 		t.Fatal("expected non-nil response")
+		return
 	}
 	if resp.HTTPResponse.StatusCode != 200 {
 		t.Errorf("expected status 200, got %d", resp.HTTPResponse.StatusCode)
