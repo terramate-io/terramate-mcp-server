@@ -33,6 +33,10 @@ func (th *ToolHandlers) Tools() []server.ServerTool {
 	tools = append(tools, tmc.ListDrifts(th.tmcClient))
 	tools = append(tools, tmc.GetDrift(th.tmcClient))
 
+	// Register review request tools
+	tools = append(tools, tmc.ListReviewRequests(th.tmcClient))
+	tools = append(tools, tmc.GetReviewRequest(th.tmcClient))
+
 	// TODO: Add more tools here
 	// tools = append(tools, tmc.ListDeployments(th.tmcClient))
 	// tools = append(tools, tmc.ListAlerts(th.tmcClient))

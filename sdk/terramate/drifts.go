@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"strconv"
-	"strings"
 )
 
 // DriftsService handles communication with the drifts related
@@ -22,21 +20,9 @@ func (opts *DriftsListOptions) buildQuery() url.Values {
 		return query
 	}
 
-	// Add pagination parameters
-	if opts.Page > 0 {
-		query.Set("page", strconv.Itoa(opts.Page))
-	}
-	if opts.PerPage > 0 {
-		query.Set("per_page", strconv.Itoa(opts.PerPage))
-	}
-
-	// Add filter parameters
-	if len(opts.DriftStatus) > 0 {
-		query.Set("drift_status", strings.Join(opts.DriftStatus, ","))
-	}
-	if opts.GroupingKey != "" {
-		query.Set("grouping_key", opts.GroupingKey)
-	}
+	addPagination(query, opts.Page, opts.PerPage)
+	addStringSlice(query, "drift_status", opts.DriftStatus)
+	addString(query, "grouping_key", opts.GroupingKey)
 
 	return query
 }

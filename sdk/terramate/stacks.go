@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"strconv"
-	"strings"
 )
 
 // StacksService handles communication with the stacks related
@@ -31,53 +29,22 @@ func (opts *StacksListOptions) buildQuery() url.Values {
 
 // addPaginationParams adds pagination query parameters
 func (opts *StacksListOptions) addPaginationParams(query url.Values) {
-	if opts.Page > 0 {
-		query.Set("page", strconv.Itoa(opts.Page))
-	}
-	if opts.PerPage > 0 {
-		query.Set("per_page", strconv.Itoa(opts.PerPage))
-	}
+	addPagination(query, opts.Page, opts.PerPage)
 }
 
 // addFilterParams adds filter query parameters
 func (opts *StacksListOptions) addFilterParams(query url.Values) {
-	if len(opts.Repository) > 0 {
-		query.Set("repository", strings.Join(opts.Repository, ","))
-	}
-	if len(opts.Target) > 0 {
-		query.Set("target", strings.Join(opts.Target, ","))
-	}
-	if len(opts.Status) > 0 {
-		query.Set("status", strings.Join(opts.Status, ","))
-	}
-	if len(opts.DeploymentStatus) > 0 {
-		query.Set("deployment_status", strings.Join(opts.DeploymentStatus, ","))
-	}
-	if len(opts.DriftStatus) > 0 {
-		query.Set("drift_status", strings.Join(opts.DriftStatus, ","))
-	}
-	if opts.Draft != nil {
-		query.Set("draft", strconv.FormatBool(*opts.Draft))
-	}
-	if len(opts.IsArchived) > 0 {
-		archived := make([]string, len(opts.IsArchived))
-		for i, v := range opts.IsArchived {
-			archived[i] = strconv.FormatBool(v)
-		}
-		query.Set("is_archived", strings.Join(archived, ","))
-	}
-	if opts.Search != "" {
-		query.Set("search", opts.Search)
-	}
-	if opts.MetaID != "" {
-		query.Set("meta_id", opts.MetaID)
-	}
-	if opts.DeploymentUUID != "" {
-		query.Set("deployment_uuid", opts.DeploymentUUID)
-	}
-	if len(opts.PolicySeverity) > 0 {
-		query.Set("policy_severity", strings.Join(opts.PolicySeverity, ","))
-	}
+	addStringSlice(query, "repository", opts.Repository)
+	addStringSlice(query, "target", opts.Target)
+	addStringSlice(query, "status", opts.Status)
+	addStringSlice(query, "deployment_status", opts.DeploymentStatus)
+	addStringSlice(query, "drift_status", opts.DriftStatus)
+	addBoolPtr(query, "draft", opts.Draft)
+	addBoolSlice(query, "is_archived", opts.IsArchived)
+	addString(query, "search", opts.Search)
+	addString(query, "meta_id", opts.MetaID)
+	addString(query, "deployment_uuid", opts.DeploymentUUID)
+	addStringSlice(query, "policy_severity", opts.PolicySeverity)
 }
 
 // addArrayParams adds array query parameters that use query.Add

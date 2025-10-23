@@ -216,3 +216,134 @@ type DriftsListOptions struct {
 	// GroupingKey filters by grouping key
 	GroupingKey string
 }
+
+// VCSLabel represents a label on a pull/merge request
+// Maps to VCSLabel in the OpenAPI spec
+type VCSLabel struct {
+	Name        string `json:"name"`
+	Color       string `json:"color,omitempty"`
+	Description string `json:"description,omitempty"`
+}
+
+// ResourceChangesActionsSummary represents a summary of resource changes in a preview
+// Maps to ResourceChangesActionsSummary in the OpenAPI spec
+type ResourceChangesActionsSummary struct {
+	CreateCount  int `json:"create_count"`
+	DeleteCount  int `json:"delete_count"`
+	NoopCount    int `json:"noop_count"`
+	ReadCount    int `json:"read_count"`
+	ReplaceCount int `json:"replace_count"`
+	UpdateCount  int `json:"update_count"`
+	ImportCount  int `json:"import_count"`
+	MoveCount    int `json:"move_count"`
+	ForgetCount  int `json:"forget_count"`
+}
+
+// Preview represents a preview summary for a review request
+// Maps to Preview in the OpenAPI spec
+type Preview struct {
+	ID              int                            `json:"id"`
+	Status          string                         `json:"status"` // current, outdated
+	AffectedCount   int                            `json:"affected_count"`
+	PendingCount    int                            `json:"pending_count"`
+	RunningCount    int                            `json:"running_count"`
+	ChangedCount    int                            `json:"changed_count"`
+	UnchangedCount  int                            `json:"unchanged_count"`
+	FailedCount     int                            `json:"failed_count"`
+	CanceledCount   int                            `json:"canceled_count"`
+	ResourceChanges *ResourceChangesActionsSummary `json:"resource_changes,omitempty"`
+}
+
+// ReviewRequestCollaborator represents a collaborator on a review request
+type ReviewRequestCollaborator struct {
+	ID          int      `json:"id"`
+	DisplayName string   `json:"display_name"`
+	AvatarURL   string   `json:"avatar_url,omitempty"`
+	Platform    string   `json:"platform"`
+	Roles       []string `json:"roles"` // author, reviewer, requested_reviewer
+}
+
+// ReviewRequest represents a pull/merge request in Terramate Cloud
+// Maps to ReviewRequest in the OpenAPI spec
+type ReviewRequest struct {
+	ReviewRequestID       int                         `json:"review_request_id"`
+	Platform              string                      `json:"platform,omitempty"` // github, gitlab, bitbucket
+	Repository            string                      `json:"repository,omitempty"`
+	CommitSHA             string                      `json:"commit_sha,omitempty"`
+	Number                int                         `json:"number,omitempty"`
+	Title                 string                      `json:"title,omitempty"`
+	Description           string                      `json:"description,omitempty"`
+	URL                   string                      `json:"url,omitempty"`
+	Status                string                      `json:"status,omitempty"` // open, merged, closed, approved, changes_requested, review_required
+	PlatformUpdatedAt     *time.Time                  `json:"platform_updated_at,omitempty"`
+	PlatformCreatedAt     *time.Time                  `json:"platform_created_at,omitempty"`
+	PlatformPushedAt      *time.Time                  `json:"platform_pushed_at,omitempty"`
+	PlatformMergedAt      *time.Time                  `json:"platform_merged_at,omitempty"`
+	Branch                string                      `json:"branch,omitempty"`
+	BaseBranch            string                      `json:"base_branch,omitempty"`
+	Draft                 bool                        `json:"draft,omitempty"`
+	ReviewDecision        string                      `json:"review_decision,omitempty"` // approved, changes_requested, review_required, none
+	ChangesRequestedCount int                         `json:"changes_requested_count,omitempty"`
+	ApprovedCount         int                         `json:"approved_count,omitempty"`
+	ChecksTotalCount      int                         `json:"checks_total_count,omitempty"`
+	ChecksFailureCount    int                         `json:"checks_failure_count,omitempty"`
+	ChecksSuccessCount    int                         `json:"checks_success_count,omitempty"`
+	Labels                []VCSLabel                  `json:"labels,omitempty"`
+	Preview               *Preview                    `json:"preview,omitempty"`
+	Collaborators         []ReviewRequestCollaborator `json:"collaborators,omitempty"`
+}
+
+// ResourceChanges represents resource changes in a stack preview
+// Maps to ResourceChanges in the OpenAPI spec
+type ResourceChanges struct {
+	ActionsSummary ResourceChangesActionsSummary `json:"actions_summary"`
+}
+
+// StackPreview represents a terraform plan preview for a single stack
+// Maps to StackPreview in the OpenAPI spec
+type StackPreview struct {
+	StackPreviewID   int               `json:"stack_preview_id"`
+	Status           string            `json:"status"` // affected, pending, running, changed, unchanged, failed, canceled
+	Path             string            `json:"path,omitempty"`
+	Technology       string            `json:"technology"` // terraform, opentofu, other
+	TechnologyLayer  string            `json:"technology_layer,omitempty"`
+	UpdatedAt        time.Time         `json:"updated_at"`
+	Stack            *Stack            `json:"stack,omitempty"`
+	ChangesetDetails *ChangesetDetails `json:"changeset_details,omitempty"`
+	ResourceChanges  *ResourceChanges  `json:"resource_changes,omitempty"`
+}
+
+// ReviewRequestGetResponse represents the response from getting a review request
+// Maps to GetReviewRequestResponse in the OpenAPI spec
+type ReviewRequestGetResponse struct {
+	ReviewRequest ReviewRequest  `json:"review_request"`
+	StackPreviews []StackPreview `json:"stack_previews,omitempty"`
+}
+
+// ReviewRequestsListResponse represents the response from listing review requests
+// Maps to GetReviewRequestsResponse in the OpenAPI spec
+type ReviewRequestsListResponse struct {
+	ReviewRequests  []ReviewRequest `json:"review_requests"`
+	PaginatedResult PaginatedResult `json:"paginated_result"`
+}
+
+// ReviewRequestsListOptions represents options for listing review requests
+type ReviewRequestsListOptions struct {
+	ListOptions
+	Status          []string // open, merged, closed, approved, changes_requested, review_required
+	Repository      []string
+	CollaboratorID  []int
+	UserUUID        []string
+	AuthorUUID      []string
+	ReviewRequested []string // User UUIDs of requested reviewers
+	Draft           *bool
+	Search          string // Searches PR number, title, commit SHA, branch
+	CreatedAtFrom   *time.Time
+	CreatedAtTo     *time.Time
+	Sort            []string
+}
+
+// ReviewRequestGetOptions represents options for getting a review request
+type ReviewRequestGetOptions struct {
+	ExcludeStackPreviews bool
+}

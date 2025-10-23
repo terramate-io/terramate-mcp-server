@@ -7,6 +7,8 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/terramate-io/terramate-mcp-server/internal/version"
@@ -31,9 +33,10 @@ type Client struct {
 	userAgent string
 
 	// Services
-	Memberships *MembershipsService
-	Stacks      *StacksService
-	Drifts      *DriftsService
+	Memberships    *MembershipsService
+	Stacks         *StacksService
+	Drifts         *DriftsService
+	ReviewRequests *ReviewRequestsService
 }
 
 // ClientOption is a functional option for configuring the Client
@@ -71,6 +74,7 @@ func NewClient(apiKey string, opts ...ClientOption) (*Client, error) {
 	client.Memberships = &MembershipsService{client: client}
 	client.Stacks = &StacksService{client: client}
 	client.Drifts = &DriftsService{client: client}
+	client.ReviewRequests = &ReviewRequestsService{client: client}
 
 	return client, nil
 }
@@ -270,6 +274,68 @@ func isJSONContentType(ct string) bool {
 type Response struct {
 	HTTPResponse *http.Response
 	Body         []byte
+}
+
+// Query builder helper functions
+
+// addPagination adds pagination parameters to a query
+func addPagination(query url.Values, page, perPage int) {
+	if page > 0 {
+		query.Set("page", strconv.Itoa(page))
+	}
+	if perPage > 0 {
+		query.Set("per_page", strconv.Itoa(perPage))
+	}
+}
+
+// addStringSlice adds a comma-separated string slice to a query
+func addStringSlice(query url.Values, key string, values []string) {
+	if len(values) > 0 {
+		query.Set(key, strings.Join(values, ","))
+	}
+}
+
+// addIntSlice adds a comma-separated int slice to a query
+func addIntSlice(query url.Values, key string, values []int) {
+	if len(values) > 0 {
+		strValues := make([]string, len(values))
+		for i, v := range values {
+			strValues[i] = strconv.Itoa(v)
+		}
+		query.Set(key, strings.Join(strValues, ","))
+	}
+}
+
+// addBoolSlice adds a comma-separated bool slice to a query
+func addBoolSlice(query url.Values, key string, values []bool) {
+	if len(values) > 0 {
+		strValues := make([]string, len(values))
+		for i, v := range values {
+			strValues[i] = strconv.FormatBool(v)
+		}
+		query.Set(key, strings.Join(strValues, ","))
+	}
+}
+
+// addBoolPtr adds a boolean pointer to a query if non-nil
+func addBoolPtr(query url.Values, key string, value *bool) {
+	if value != nil {
+		query.Set(key, strconv.FormatBool(*value))
+	}
+}
+
+// addString adds a string to a query if non-empty
+func addString(query url.Values, key, value string) {
+	if value != "" {
+		query.Set(key, value)
+	}
+}
+
+// addTimePtr adds a timestamp to a query if non-nil
+func addTimePtr(query url.Values, key string, value *time.Time) {
+	if value != nil {
+		query.Set(key, value.Format("2006-01-02T15:04:05Z07:00"))
+	}
 }
 
 // ErrorResponse represents an error response from the API
