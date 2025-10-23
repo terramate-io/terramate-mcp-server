@@ -418,6 +418,7 @@ func TestDriftsListForStack_RespectsContextTimeout(t *testing.T) {
 
 // Get tests
 
+//nolint:gocyclo // High complexity due to comprehensive field assertions
 func TestDriftsGet_ParsesResponse(t *testing.T) {
 	payload := `{
 		"id": 100,
@@ -507,8 +508,8 @@ func TestDriftsGet_ParsesResponse(t *testing.T) {
 	if drift.DriftDetails.Serial != 42 {
 		t.Errorf("unexpected serial: got %d, want 42", drift.DriftDetails.Serial)
 	}
-	if drift.DriftDetails.ChangesetAscii != "Terraform will perform the following actions:\n\n  + resource.new\n" {
-		t.Errorf("unexpected changeset_ascii: got %s", drift.DriftDetails.ChangesetAscii)
+	if drift.DriftDetails.ChangesetASCII != "Terraform will perform the following actions:\n\n  + resource.new\n" {
+		t.Errorf("unexpected changeset_ascii: got %s", drift.DriftDetails.ChangesetASCII)
 	}
 	if drift.DriftDetails.ChangesetJSON != "{\"resource_changes\":[]}" {
 		t.Errorf("unexpected changeset_json: got %s", drift.DriftDetails.ChangesetJSON)

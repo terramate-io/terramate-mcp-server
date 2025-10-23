@@ -29,9 +29,12 @@ func (th *ToolHandlers) Tools() []server.ServerTool {
 	tools = append(tools, tmc.ListStacks(th.tmcClient))
 	tools = append(tools, tmc.GetStack(th.tmcClient))
 
+	// Register drift tools
+	tools = append(tools, tmc.ListDrifts(th.tmcClient))
+	tools = append(tools, tmc.GetDrift(th.tmcClient))
+
 	// TODO: Add more tools here
 	// tools = append(tools, tmc.ListDeployments(th.tmcClient))
-	// tools = append(tools, tmc.ListDrifts(th.tmcClient))
 	// tools = append(tools, tmc.ListAlerts(th.tmcClient))
 
 	return tools

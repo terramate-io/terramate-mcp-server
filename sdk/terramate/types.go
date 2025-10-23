@@ -177,7 +177,7 @@ type TrustInfo struct {
 type ChangesetDetails struct {
 	Provisioner    string `json:"provisioner,omitempty"`     // terraform, opentofu
 	Serial         int64  `json:"serial,omitempty"`          // Terraform state serial number
-	ChangesetAscii string `json:"changeset_ascii,omitempty"` // ASCII format plan (up to 4MB)
+	ChangesetASCII string `json:"changeset_ascii,omitempty"` // ASCII format plan (up to 4MB)
 	ChangesetJSON  string `json:"changeset_json,omitempty"`  // JSON format plan (up to 16MB)
 }
 
