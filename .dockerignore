@@ -1,0 +1,42 @@
+# Dockerignore for github.com/terramate-io/terramate-mcp-server
+# Excludes files that don't need to be in the Docker build context
+
+# Build artifacts
+bin/
+*.a
+*.o
+*.so
+**/*.test
+**/*_test
+
+# Go module cache and dependencies
+vendor/
+
+# Git-related files
+.git
+.gitignore
+
+# IDE and editor specific files
+.idea/
+.vscode/
+*.swp
+*.bak
+*~
+
+# Environment variables and configuration files
+.env
+.env.*
+
+# Logs and temporary files
+*.log
+tmp/
+temp/
+
+# Exclude the Dockerfile itself and the .dockerignore file (they are still sent to the daemon)
+Dockerfile
+.dockerignore
+
+# Binary output (if you build locally before copying)
+# If you are building inside the container, this might not be necessary.
+# If you are copying a pre-built binary, ensure you don't exclude it here.
+my-go-app # Replace with your application's binary name.cover
