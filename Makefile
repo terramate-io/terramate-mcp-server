@@ -21,8 +21,16 @@ BUILD_TIME := $(shell date -u '+%Y-%m-%d_%H:%M:%S')
 LDFLAGS := -s -w -X main.Version=$(VERSION) -X main.GitCommit=$(GIT_COMMIT) -X main.BuildTime=$(BUILD_TIME)
 GO_BUILD_FLAGS := -ldflags="$(LDFLAGS)" -trimpath
 
-# Go commands
+# Go commands (use asdf if available, otherwise fall back to system go)
+ASDF := $(shell command -v asdf 2> /dev/null)
+ifdef ASDF
+# Set GOROOT to asdf's golang installation
+ASDF_GOLANG_VERSION := $(shell asdf current golang 2>/dev/null | awk '{print $$2}')
+export GOROOT := $(HOME)/.asdf/installs/golang/$(ASDF_GOLANG_VERSION)/go
+GOCMD := asdf exec go
+else
 GOCMD := go
+endif
 GOBUILD := $(GOCMD) build
 GOTEST := $(GOCMD) test
 GOCLEAN := $(GOCMD) clean
@@ -32,8 +40,8 @@ GOFMT := gofmt
 TOOLS_BIN := $(BUILD_DIR)/tools
 GOLANGCI_LINT := $(TOOLS_BIN)/golangci-lint
 GOLANGCI_LINT_VERSION ?= v1.62.0
-GOTOOLCHAIN ?= go1.25.2
-GOLANGCI_LINT_TOOLCHAIN ?= go1.25.2
+GOTOOLCHAIN ?= go1.25.3
+GOLANGCI_LINT_TOOLCHAIN ?= go1.25.3
 
 # Test flags
 TEST_FLAGS := -v -race -coverprofile=coverage.out -timeout=10m
@@ -203,7 +211,7 @@ info: ## Display build information
 	@echo "  Version:      $(VERSION)"
 	@echo "  Git Commit:   $(GIT_COMMIT)"
 	@echo "  Build Time:   $(BUILD_TIME)"
-	@echo "  Go Version:   $$(go version)"
+	@echo "  Go Version:   $$($(GOCMD) version)"
 	@echo "  Build Dir:    $(BUILD_DIR)"
 	@echo "  Binary:       $(BINARY_NAME)"
 	@echo ""
