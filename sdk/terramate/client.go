@@ -33,6 +33,7 @@ type Client struct {
 	// Services
 	Memberships *MembershipsService
 	Stacks      *StacksService
+	Drifts      *DriftsService
 }
 
 // ClientOption is a functional option for configuring the Client
@@ -69,6 +70,7 @@ func NewClient(apiKey string, opts ...ClientOption) (*Client, error) {
 	// Initialize services
 	client.Memberships = &MembershipsService{client: client}
 	client.Stacks = &StacksService{client: client}
+	client.Drifts = &DriftsService{client: client}
 
 	return client, nil
 }

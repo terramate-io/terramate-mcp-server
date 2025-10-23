@@ -65,5 +65,7 @@ issues:
       text: "exported: exported function .* should have comment or be unexported"
     - linters: [revive]
       text: "package-comments: should have a package comment"
+    - linters: [goconst]
+      path: "_test\\.go"
 
 
