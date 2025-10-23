@@ -157,3 +157,62 @@ type StacksListOptions struct {
 	PolicySeverity []string
 	Sort           []string
 }
+
+// UserInfo represents user information in drift/deployment contexts
+// Maps to UserInfo in the OpenAPI spec
+type UserInfo struct {
+	DisplayName    string `json:"display_name,omitempty"`
+	Position       string `json:"position,omitempty"`
+	UserPictureURL string `json:"user_picture_url,omitempty"`
+}
+
+// TrustInfo represents trust information for CI/CD authentication
+// Maps to TrustInfo in the OpenAPI spec
+type TrustInfo struct {
+	AuthID string `json:"auth_id"`
+}
+
+// ChangesetDetails represents the details of a terraform/tofu plan changeset
+// Maps to ChangesetDetails in the OpenAPI spec
+type ChangesetDetails struct {
+	Provisioner    string `json:"provisioner,omitempty"`     // terraform, opentofu
+	Serial         int64  `json:"serial,omitempty"`          // Terraform state serial number
+	ChangesetAscii string `json:"changeset_ascii,omitempty"` // ASCII format plan (up to 4MB)
+	ChangesetJSON  string `json:"changeset_json,omitempty"`  // JSON format plan (up to 16MB)
+}
+
+// Drift represents a drift detection run for a stack
+// Maps to Drift in the OpenAPI spec
+// Note: drift_details and stack are not populated in responses that list drifts
+type Drift struct {
+	ID           int                    `json:"id"`
+	OrgUUID      string                 `json:"org_uuid"`
+	StackID      int                    `json:"stack_id"`
+	Status       string                 `json:"status"` // ok, drifted, failed
+	Metadata     map[string]interface{} `json:"metadata"`
+	StartedAt    *time.Time             `json:"started_at,omitempty"`
+	FinishedAt   *time.Time             `json:"finished_at,omitempty"`
+	AuthType     string                 `json:"auth_type,omitempty"` // gha, gitlabcicd, idp, tmco
+	AuthUser     *UserInfo              `json:"auth_user,omitempty"`
+	AuthTrust    *TrustInfo             `json:"auth_trust,omitempty"`
+	Stack        *Stack                 `json:"stack,omitempty"`
+	DriftDetails *ChangesetDetails      `json:"drift_details,omitempty"` // Only populated when getting specific drift
+	GroupingKey  string                 `json:"grouping_key,omitempty"`
+	Cmd          []string               `json:"cmd,omitempty"`
+}
+
+// DriftsListResponse represents the response from listing drifts
+// Maps to GetDriftsResponseObject in the OpenAPI spec
+type DriftsListResponse struct {
+	Drifts          []Drift         `json:"drifts,omitempty"`
+	PaginatedResult PaginatedResult `json:"paginated_result"`
+}
+
+// DriftsListOptions represents options for listing drifts
+type DriftsListOptions struct {
+	ListOptions
+	// DriftStatus filters by drift status (ok, drifted, failed)
+	DriftStatus []string
+	// GroupingKey filters by grouping key
+	GroupingKey string
+}
