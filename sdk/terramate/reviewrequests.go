@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"strconv"
-	"strings"
 )
 
 // ReviewRequestsService handles communication with the review requests related
@@ -15,60 +13,24 @@ type ReviewRequestsService struct {
 	client *Client
 }
 
-//nolint:gocyclo // High complexity due to many optional filter parameters
+// buildQuery constructs URL query parameters from ReviewRequestsListOptions
 func (opts *ReviewRequestsListOptions) buildQuery() url.Values {
 	query := url.Values{}
 	if opts == nil {
 		return query
 	}
 
-	// Add pagination parameters
-	if opts.Page > 0 {
-		query.Set("page", strconv.Itoa(opts.Page))
-	}
-	if opts.PerPage > 0 {
-		query.Set("per_page", strconv.Itoa(opts.PerPage))
-	}
-
-	// Add filter parameters
-	if len(opts.Status) > 0 {
-		query.Set("status", strings.Join(opts.Status, ","))
-	}
-	if len(opts.Repository) > 0 {
-		query.Set("repository", strings.Join(opts.Repository, ","))
-	}
-	if opts.Search != "" {
-		query.Set("search", opts.Search)
-	}
-	if opts.Draft != nil {
-		query.Set("draft", strconv.FormatBool(*opts.Draft))
-	}
-
-	// Add array parameters
-	if len(opts.CollaboratorID) > 0 {
-		ids := make([]string, len(opts.CollaboratorID))
-		for i, id := range opts.CollaboratorID {
-			ids[i] = strconv.Itoa(id)
-		}
-		query.Set("collaborator_id", strings.Join(ids, ","))
-	}
-	if len(opts.UserUUID) > 0 {
-		query.Set("user_uuid", strings.Join(opts.UserUUID, ","))
-	}
-	if len(opts.AuthorUUID) > 0 {
-		query.Set("author_uuid", strings.Join(opts.AuthorUUID, ","))
-	}
-	if len(opts.ReviewRequested) > 0 {
-		query.Set("review_requested_uuid", strings.Join(opts.ReviewRequested, ","))
-	}
-
-	// Add timestamp parameters
-	if opts.CreatedAtFrom != nil {
-		query.Set("created_at_from", opts.CreatedAtFrom.Format("2006-01-02T15:04:05Z07:00"))
-	}
-	if opts.CreatedAtTo != nil {
-		query.Set("created_at_to", opts.CreatedAtTo.Format("2006-01-02T15:04:05Z07:00"))
-	}
+	addPagination(query, opts.Page, opts.PerPage)
+	addStringSlice(query, "status", opts.Status)
+	addStringSlice(query, "repository", opts.Repository)
+	addString(query, "search", opts.Search)
+	addBoolPtr(query, "draft", opts.Draft)
+	addIntSlice(query, "collaborator_id", opts.CollaboratorID)
+	addStringSlice(query, "user_uuid", opts.UserUUID)
+	addStringSlice(query, "author_uuid", opts.AuthorUUID)
+	addStringSlice(query, "review_requested_uuid", opts.ReviewRequested)
+	addTimePtr(query, "created_at_from", opts.CreatedAtFrom)
+	addTimePtr(query, "created_at_to", opts.CreatedAtTo)
 
 	// Add sort parameters (use query.Add for multiple values)
 	for _, sort := range opts.Sort {
