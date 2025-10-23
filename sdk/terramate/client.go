@@ -31,9 +31,10 @@ type Client struct {
 	userAgent string
 
 	// Services
-	Memberships *MembershipsService
-	Stacks      *StacksService
-	Drifts      *DriftsService
+	Memberships    *MembershipsService
+	Stacks         *StacksService
+	Drifts         *DriftsService
+	ReviewRequests *ReviewRequestsService
 }
 
 // ClientOption is a functional option for configuring the Client
@@ -71,6 +72,7 @@ func NewClient(apiKey string, opts ...ClientOption) (*Client, error) {
 	client.Memberships = &MembershipsService{client: client}
 	client.Stacks = &StacksService{client: client}
 	client.Drifts = &DriftsService{client: client}
+	client.ReviewRequests = &ReviewRequestsService{client: client}
 
 	return client, nil
 }
