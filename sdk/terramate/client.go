@@ -37,6 +37,8 @@ type Client struct {
 	Stacks         *StacksService
 	Drifts         *DriftsService
 	ReviewRequests *ReviewRequestsService
+	Deployments    *DeploymentsService
+	Previews       *PreviewsService
 }
 
 // ClientOption is a functional option for configuring the Client
@@ -75,6 +77,8 @@ func NewClient(apiKey string, opts ...ClientOption) (*Client, error) {
 	client.Stacks = &StacksService{client: client}
 	client.Drifts = &DriftsService{client: client}
 	client.ReviewRequests = &ReviewRequestsService{client: client}
+	client.Deployments = &DeploymentsService{client: client}
+	client.Previews = &PreviewsService{client: client}
 
 	return client, nil
 }

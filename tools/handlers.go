@@ -37,8 +37,15 @@ func (th *ToolHandlers) Tools() []server.ServerTool {
 	tools = append(tools, tmc.ListReviewRequests(th.tmcClient))
 	tools = append(tools, tmc.GetReviewRequest(th.tmcClient))
 
+	// Register deployment tools
+	tools = append(tools, tmc.ListDeployments(th.tmcClient))
+	tools = append(tools, tmc.GetStackDeployment(th.tmcClient))
+	tools = append(tools, tmc.GetDeploymentLogs(th.tmcClient))
+
+	// Register preview tools
+	tools = append(tools, tmc.GetStackPreviewLogs(th.tmcClient))
+
 	// TODO: Add more tools here
-	// tools = append(tools, tmc.ListDeployments(th.tmcClient))
 	// tools = append(tools, tmc.ListAlerts(th.tmcClient))
 
 	return tools
