@@ -301,6 +301,12 @@ type ResourceChanges struct {
 
 // StackPreview represents a terraform plan preview for a single stack
 // Maps to StackPreview in the OpenAPI spec
+//
+// This type is used when getting a review request and includes the FULL
+// terraform plan content in changeset_details (up to 4MB ASCII plan).
+//
+// Use this when: Getting PR details with ReviewRequests.Get()
+// The changeset_details field contains the actual terraform plan output.
 type StackPreview struct {
 	StackPreviewID   int               `json:"stack_preview_id"`
 	Status           string            `json:"status"` // affected, pending, running, changed, unchanged, failed, canceled
@@ -346,4 +352,170 @@ type ReviewRequestsListOptions struct {
 // ReviewRequestGetOptions represents options for getting a review request
 type ReviewRequestGetOptions struct {
 	ExcludeStackPreviews bool
+}
+
+// WorkflowDeploymentGroup represents a CI/CD workflow deployment run
+// Maps to WorkflowDeploymentGroup in the OpenAPI spec
+type WorkflowDeploymentGroup struct {
+	ID                        int                    `json:"id"`
+	Status                    string                 `json:"status"` // ok, failed, processing
+	CommitTitle               string                 `json:"commit_title"`
+	CommitSHA                 string                 `json:"commit_sha,omitempty"`
+	Repository                string                 `json:"repository"`
+	AuthType                  string                 `json:"auth_type,omitempty"` // gha, gitlabcicd, idp, tmco
+	AuthID                    string                 `json:"auth_id,omitempty"`
+	AuthUser                  *UserInfo              `json:"auth_user,omitempty"`
+	CanceledCount             int                    `json:"canceled_count"`
+	FailedCount               int                    `json:"failed_count"`
+	OkCount                   int                    `json:"ok_count"`
+	PendingCount              int                    `json:"pending_count"`
+	RunningCount              int                    `json:"running_count"`
+	StackDeploymentTotalCount int                    `json:"stack_deployment_total_count"`
+	CreatedAt                 time.Time              `json:"created_at"`
+	StartedAt                 *time.Time             `json:"started_at,omitempty"`
+	FinishedAt                *time.Time             `json:"finished_at,omitempty"`
+	Metadata                  map[string]interface{} `json:"metadata,omitempty"`
+	ReviewRequest             *ReviewRequest         `json:"review_request,omitempty"`
+	Branch                    string                 `json:"branch,omitempty"`
+	WorkflowName              string                 `json:"workflow_name,omitempty"`
+	GroupingKey               string                 `json:"grouping_key,omitempty"`
+}
+
+// StackDeployment represents a deployment of a single stack
+// Maps to StackDeployment in the OpenAPI spec
+type StackDeployment struct {
+	ID               int               `json:"id"`
+	DeploymentUUID   string            `json:"deployment_uuid"`
+	Path             string            `json:"path"`
+	Cmd              []string          `json:"cmd"`
+	Status           string            `json:"status"` // canceled, failed, ok, pending, running
+	CreatedAt        time.Time         `json:"created_at"`
+	StartedAt        *time.Time        `json:"started_at,omitempty"`
+	FinishedAt       *time.Time        `json:"finished_at,omitempty"`
+	FixedAt          *time.Time        `json:"fixed_at,omitempty"`
+	Stack            *Stack            `json:"stack,omitempty"`
+	ChangesetDetails *ChangesetDetails `json:"changeset_details,omitempty"`
+}
+
+// DeploymentsListResponse represents the response from listing workflow deployments
+// Maps to GetOrganizationDeploymentsResponseObject in the OpenAPI spec
+type DeploymentsListResponse struct {
+	Deployments     []WorkflowDeploymentGroup `json:"deployments"`
+	PaginatedResult PaginatedResult           `json:"paginated_result"`
+}
+
+// StackDeploymentsListResponse represents the response from listing stack deployments
+// Maps to StackDeploymentsCollection in the OpenAPI spec
+type StackDeploymentsListResponse struct {
+	StackDeployments []StackDeployment `json:"stack_deployments"`
+	PaginatedResult  PaginatedResult   `json:"paginated_result"`
+}
+
+// DeploymentsListOptions represents options for listing workflow deployments
+type DeploymentsListOptions struct {
+	ListOptions
+	Repository     []string
+	AuthType       []string // gha, gitlabcicd, idp, tmco
+	Status         []string // ok, failed, processing
+	CollaboratorID []int
+	UserUUID       []string
+	Search         string
+	CreatedAtFrom  *time.Time
+	CreatedAtTo    *time.Time
+	StartedAtFrom  *time.Time
+	StartedAtTo    *time.Time
+	FinishedAtFrom *time.Time
+	FinishedAtTo   *time.Time
+	Sort           []string
+}
+
+// StackDeploymentsListOptions represents options for listing stack deployments
+type StackDeploymentsListOptions struct {
+	ListOptions
+	Status        []string // canceled, failed, ok, pending, running
+	CreatedAtFrom *time.Time
+	CreatedAtTo   *time.Time
+}
+
+// CommandLogLine represents a single log line from terraform/tofu output
+// Maps to CommandLogLine in the OpenAPI spec
+type CommandLogLine struct {
+	LogLine   int       `json:"log_line"`
+	Timestamp time.Time `json:"timestamp"`
+	Channel   string    `json:"channel"` // stdout, stderr
+	Message   string    `json:"message"`
+}
+
+// StackPreviewLogsResponse represents the response from getting stack preview logs
+// Maps to GetStackPreviewLogsResponse in the OpenAPI spec
+type StackPreviewLogsResponse struct {
+	StackPreviewLogLines []CommandLogLine `json:"stack_preview_log_lines"`
+	PaginatedResult      PaginatedResult  `json:"paginated_result"`
+}
+
+// Summary represents an AI-generated summary
+// Maps to SummaryResponse.summary in the OpenAPI spec
+type Summary struct {
+	Contents  []string  `json:"contents"`
+	CreatedAt time.Time `json:"created_at"`
+	Requester *User     `json:"requester,omitempty"`
+}
+
+// SummaryResponse represents an AI summary response
+// Maps to SummaryResponse in the OpenAPI spec
+type SummaryResponse struct {
+	Summary Summary `json:"summary"`
+}
+
+// StackPreviewV2 represents preview metadata without full plan content
+// Maps to StackPreviewV2 in the OpenAPI spec
+//
+// This type provides metadata (sizes, counts, timestamps) but does NOT
+// include the full terraform plan in changeset_details. Instead, it provides:
+// - changeset_ascii_size: Size of the plan (not the content)
+// - logs_stderr_count: Number of error log lines (not the logs)
+// - logs_stdout_count: Number of output log lines (not the logs)
+//
+// To get the actual logs, use Previews.GetLogs().
+// To get the full plan, use the changeset endpoint (not yet implemented).
+//
+// Use this when: Getting preview details with Previews.Get()
+// This is useful for checking preview status without loading large plan content.
+type StackPreviewV2 struct {
+	ID                   int                            `json:"id"`
+	CreatedAt            time.Time                      `json:"created_at"`
+	UpdatedAt            time.Time                      `json:"updated_at"`
+	CommitSHA            string                         `json:"commit_sha"`
+	ReviewRequestID      int                            `json:"review_request_id"`
+	Status               string                         `json:"status"` // affected, pending, running, changed, unchanged, failed, canceled
+	StackID              int                            `json:"stack_id"`
+	Technology           string                         `json:"technology,omitempty"`
+	TechnologyLayer      string                         `json:"technology_layer,omitempty"`
+	Path                 string                         `json:"path,omitempty"`
+	Stack                *Stack                         `json:"stack,omitempty"`
+	ChangesetProvisioner string                         `json:"changeset_provisioner,omitempty"`
+	ChangesetJSONSize    int64                          `json:"changeset_json_size,omitempty"`
+	ChangesetASCIISize   int64                          `json:"changeset_ascii_size,omitempty"`
+	LogsStderrCount      int64                          `json:"logs_stderr_count,omitempty"`
+	LogsStdoutCount      int64                          `json:"logs_stdout_count,omitempty"`
+	ChangesetActions     *ResourceChangesActionsSummary `json:"changeset_actions,omitempty"`
+}
+
+// PreviewLogsOptions represents options for getting preview logs
+type PreviewLogsOptions struct {
+	ListOptions
+	Channel string // stdout, stderr
+}
+
+// DeploymentLogsResponse represents the response from getting deployment logs
+// Maps to GetDeploymentLogsResponseObject in the OpenAPI spec
+type DeploymentLogsResponse struct {
+	DeploymentLogLines []CommandLogLine `json:"deployment_log_lines"`
+	PaginatedResult    PaginatedResult  `json:"paginated_result"`
+}
+
+// DeploymentLogsOptions represents options for getting deployment logs
+type DeploymentLogsOptions struct {
+	ListOptions
+	Channel string // stdout, stderr
 }
