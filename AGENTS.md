@@ -10,39 +10,39 @@
 
 ### Build Commands
 - `make build` - Build optimized production binary to `bin/terramate-mcp-server`
-- `make build-dev` - Build debug binary (faster, with debug info)
-- `make build-docker` - Build Docker image using multi-stage build
+- `make build/dev` - Build debug binary (faster, with debug info)
+- `make docker/build` - Build Docker image using multi-stage build
 - `make clean` - Clean build artifacts and test cache
-- `make clean-all` - Clean everything including Go module cache
+- `make clean/all` - Clean everything including Go module cache
 
 ### Test Commands
 - `make test` - Run tests with race detector and coverage (timeout: 10m)
-- `make test-coverage` - Run tests and display coverage report
-- `make test-race` - Run tests with race detector
-- `make test-short` - Run tests, skip slow tests
+- `make test/coverage` - Run tests and display coverage report
+- `make test/race` - Run tests with race detector
+- `make test/short` - Run tests, skip slow tests
 
 ### Lint and Format Commands
 - `make lint` - Run golangci-lint with 5m timeout
-- `make lint-fix` - Run linters and auto-fix issues
+- `make lint/fix` - Run linters and auto-fix issues
 - `make fmt` - Format all Go code using `gofmt -s`
-- `make fmt-check` - Check if code is formatted (fails if not)
+- `make fmt/check` - Check if code is formatted (fails if not)
 - `make vet` - Run `go vet` on all packages
 - `make check` - Run all checks: format, vet, lint, and test
 
 ### Dependency Commands
 - `make deps` - Download and tidy dependencies
 - `make verify` - Verify dependencies integrity
-- `make tidy-check` - Check if go.mod and go.sum are tidy
+- `make tidy/check` - Check if go.mod and go.sum are tidy
 
 ### Run Commands
 - `make run` - Build and run the server (requires TERRAMATE_API_KEY and TERRAMATE_REGION env vars)
 - `make dev` - Build and run in development mode
-- `make run-docker` - Build and run in Docker container
+- `make docker/run` - Build and run in Docker container
 
 ### Docker Commands
-- `make build-docker` - Build Docker image tagged with version and latest
-- `make docker-push` - Push Docker image to registry (requires GITHUB_TOKEN and GITHUB_USER)
-- `make docker-login` - Login to GitHub Container Registry
+- `make docker/build` - Build Docker image tagged with version and latest
+- `make docker/push` - Push Docker image to registry (requires GITHUB_TOKEN and GITHUB_USER)
+- `make docker/login` - Login to GitHub Container Registry
 
 ### Utility Commands
 - `make info` - Display build and Docker information

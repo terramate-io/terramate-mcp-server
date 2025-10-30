@@ -48,9 +48,9 @@ TEST_FLAGS := -v -race -coverprofile=coverage.out -timeout=10m
 # TODO: Set to a real number when we implemented tests
 COVERAGE_MIN := 0
 
-.PHONY: all build build-dev build-docker docker-push docker-login clean test test-coverage test-race \
-        lint lint-fix fmt fmt-check vet check deps verify tidy-check install uninstall \
-        run dev run-docker help info ci ci-lint ci-test ci-build clean-all test-short
+.PHONY: all build build/dev docker/build docker/push docker/login clean test test/coverage test/race \
+        lint lint/fix fmt fmt/check vet check deps verify tidy/check install uninstall \
+        run dev docker/run help info ci ci/lint ci/test ci/build clean/all test/short
 
 ## Build targets
 
@@ -62,15 +62,20 @@ build: ## Build optimized production binary
 	$(GOBUILD) $(GO_BUILD_FLAGS) -o $(BUILD_DIR)/$(BINARY_NAME) ./cmd/terramate-mcp-server
 	@echo "✅ Binary built: $(BUILD_DIR)/$(BINARY_NAME)"
 
-build-dev: ## Build debug binary (faster, with debug info)
+build/dev: ## Build debug binary (faster, with debug info)
 	@echo "Building development binary..."
 	@mkdir -p $(BUILD_DIR)
 	$(GOBUILD) -o $(BUILD_DIR)/$(BINARY_NAME) ./cmd/terramate-mcp-server
 	@echo "✅ Development binary built"
 
-build-docker: ## Build Docker image (multi-stage build)
+docker/build: ## Build Docker image (multi-stage build)
 	@echo "Building Docker image $(DOCKER_IMAGE):$(VERSION)..."
-	docker build . -t $(DOCKER_IMAGE):$(VERSION) -f Dockerfile
+	docker build . \
+		--build-arg VERSION=$(VERSION) \
+		--build-arg GIT_COMMIT=$(GIT_COMMIT) \
+		--build-arg BUILD_TIME=$(BUILD_TIME) \
+		-t $(DOCKER_IMAGE):$(VERSION) \
+		-f Dockerfile
 	docker tag $(DOCKER_IMAGE):$(VERSION) $(DOCKER_IMAGE):latest
 	@echo "✅ Docker image built: $(DOCKER_IMAGE):$(VERSION)"
 
@@ -79,7 +84,7 @@ build-docker: ## Build Docker image (multi-stage build)
 test: ## Run tests
 	$(GOTEST) $(TEST_FLAGS) ./...
 
-test-coverage: test ## Run tests and show coverage report
+test/coverage: test ## Run tests and show coverage report
 	@$(GOCMD) tool cover -func=coverage.out
 	@echo ""
 	@total=$$($(GOCMD) tool cover -func=coverage.out | grep total | awk '{print $$3}' | sed 's/%//'); \
@@ -89,10 +94,10 @@ test-coverage: test ## Run tests and show coverage report
 		exit 1; \
 	fi
 
-test-race: ## Run tests with race detector
+test/race: ## Run tests with race detector
 	$(GOTEST) -race ./...
 
-test-short: ## Run tests (skip slow tests)
+test/short: ## Run tests (skip slow tests)
 	$(GOTEST) -short ./...
 
 $(GOLANGCI_LINT): ## Install golangci-lint locally via go install
@@ -107,7 +112,7 @@ lint: $(GOLANGCI_LINT) ## Run linters
 	@echo "Running golangci-lint..."
 	@$(GOLANGCI_LINT) run --config .golangci.yml --timeout=5m
 
-lint-fix: $(GOLANGCI_LINT) ## Run linters and auto-fix issues
+lint/fix: $(GOLANGCI_LINT) ## Run linters and auto-fix issues
 	@echo "Running golangci-lint with auto-fix..."
 	@$(GOLANGCI_LINT) run --config .golangci.yml --fix --timeout=5m
 
@@ -116,7 +121,7 @@ fmt: ## Format code
 	@$(GOFMT) -s -w .
 	@echo "✅ Code formatted"
 
-fmt-check: ## Check if code is formatted
+fmt/check: ## Check if code is formatted
 	@echo "Checking code formatting..."
 	@unformatted=$$($(GOFMT) -s -l .); \
 	if [ -n "$$unformatted" ]; then \
@@ -132,7 +137,7 @@ vet: ## Run go vet (kept for local use)
 	@$(GOCMD) vet ./...
 	@echo "✅ No issues found"
 
-check: fmt-check vet lint test ## Run all checks (format, vet, lint, test)
+check: fmt/check vet lint test ## Run all checks (format, vet, lint, test)
 
 ## Dependency targets
 
@@ -147,7 +152,7 @@ verify: ## Verify dependencies
 	$(GOMOD) verify
 	@echo "✅ Dependencies verified"
 
-tidy-check: ## Check if go.mod and go.sum are tidy
+tidy/check: ## Check if go.mod and go.sum are tidy
 	@echo "Checking if go.mod and go.sum are tidy..."
 	@$(GOMOD) tidy
 	@git diff --exit-code go.mod go.sum || (echo "❌ go.mod or go.sum not tidy. Run 'make deps'" && exit 1)
@@ -171,24 +176,24 @@ run: build ## Build and run the MCP server
 	@echo "Starting MCP server..."
 	./$(BUILD_DIR)/$(BINARY_NAME) --api-key=${TERRAMATE_API_KEY} --region=${TERRAMATE_REGION}
 
-dev: build-dev ## Build and run in development mode
+dev: build/dev ## Build and run in development mode
 	@echo "Starting MCP server (development mode)..."
 	./$(BUILD_DIR)/$(BINARY_NAME) --api-key=${TERRAMATE_API_KEY} --region=${TERRAMATE_REGION}
 
-run-docker: build-docker ## Build and run Docker container
+docker/run: docker/build ## Build and run Docker container
 	@echo "Starting MCP server in Docker..."
 	docker run --rm -it \
 		-e TERRAMATE_API_KEY=${TERRAMATE_API_KEY} \
 		-e TERRAMATE_REGION=${TERRAMATE_REGION} \
 		$(DOCKER_IMAGE):latest
 
-docker-push: build-docker ## Push Docker image to registry
+docker/push: docker/build ## Push Docker image to registry
 	@echo "Pushing Docker image $(DOCKER_IMAGE):$(VERSION)..."
 	docker push $(DOCKER_IMAGE):$(VERSION)
 	docker push $(DOCKER_IMAGE):latest
 	@echo "✅ Docker images pushed"
 
-docker-login: ## Login to GitHub Container Registry
+docker/login: ## Login to GitHub Container Registry
 	@echo "Logging in to $(DOCKER_REGISTRY)..."
 	@echo ${GITHUB_TOKEN} | docker login $(DOCKER_REGISTRY) -u ${GITHUB_USER} --password-stdin
 	@echo "✅ Logged in to $(DOCKER_REGISTRY)"
@@ -201,7 +206,7 @@ clean: ## Clean build artifacts and test cache
 	@$(GOCLEAN) -cache -testcache
 	@echo "✅ Cleaned"
 
-clean-all: clean ## Clean everything including dependencies
+clean/all: clean ## Clean everything including dependencies
 	@echo "Cleaning dependencies..."
 	@$(GOCLEAN) -modcache
 	@echo "✅ All cleaned"
@@ -223,20 +228,20 @@ info: ## Display build information
 
 ## CI targets (used by GitHub Actions)
 
-ci-lint: fmt-check lint ## Run all lint checks (CI)
+ci/lint: fmt/check lint ## Run all lint checks (CI)
 
-ci-test: test-coverage ## Run tests with coverage (CI)
+ci/test: test/coverage ## Run tests with coverage (CI)
 
-ci-build: build ## Build for CI
+ci/build: build ## Build for CI
 
-ci: ci-lint ci-test ci-build ## Run all CI checks
+ci: ci/lint ci/test ci/build ## Run all CI checks
 
 help: ## Display this help message
 	@echo "Terramate MCP Server - Makefile"
 	@echo ""
 	@echo "Usage: make <target>"
 	@echo ""
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}'
+	@grep -E '^[a-zA-Z/_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}'
 	@echo ""
 	@echo "Environment Variables:"
 	@echo "  TERRAMATE_API_KEY  - Terramate Cloud API key (required for run)"
