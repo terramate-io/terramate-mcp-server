@@ -1,5 +1,6 @@
 # Terramate MCP Server
 
+[![CI](https://github.com/terramate-io/terramate-mcp-server/actions/workflows/ci.yml/badge.svg)](https://github.com/terramate-io/terramate-mcp-server/actions/workflows/ci.yml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/terramate-io/terramate-mcp-server)](https://goreportcard.com/report/github.com/terramate-io/terramate-mcp-server)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
@@ -9,16 +10,11 @@ This server enables natural language interactions with your Terramate Cloud orga
 
 ## Features
 
-- 🔐 **Secure Authentication** - API key-based authentication with Terramate Cloud
-- 🌍 **Multi-Region Support** - EU and US region endpoints
-- 📦 **Stack Management** - List, filter, and query stacks with powerful search capabilities
+- 📚 **Stack Management** - List, filter, and query stacks with powerful search capabilities
 - 🔍 **Drift Detection** - View drift runs and retrieve terraform plan outputs for AI-assisted reconciliation
 - 🔀 **Pull Request Integration** - Review terraform plans for all stacks in PRs/MRs before merging
 - 🚢 **Deployment Tracking** - Monitor CI/CD deployments, view terraform apply output, debug failures
 - 🛠️ **MCP Tools** - 11 production-ready tools for Terramate Cloud operations
-- 🔄 **Automatic Retries** - Built-in retry logic with exponential backoff for transient failures
-- 📊 **Comprehensive Testing** - 82%+ test coverage with 172 tests
-- 🚀 **Production Ready** - Graceful shutdown, timeouts, error handling, and race detection
 
 ## Installation
 
@@ -40,10 +36,46 @@ The binary will be available at `bin/terramate-mcp-server`.
 
 ### Using Docker
 
+Pull the pre-built image from GitHub Container Registry:
+
 ```bash
-docker build -t terramate-mcp-server .
-docker run --rm -e TERRAMATE_API_KEY=your-key -e TERRAMATE_REGION=eu terramate-mcp-server
+# Pull the latest version
+docker pull ghcr.io/terramate-io/terramate-mcp-server:latest
+
+# Run the container
+docker run --rm -it \
+  -e TERRAMATE_API_KEY="your-api-key" \
+  -e TERRAMATE_REGION="eu" \
+  ghcr.io/terramate-io/terramate-mcp-server:latest
 ```
+
+Or build locally:
+
+```bash
+# Build with default version info
+docker build -t terramate-mcp-server .
+
+# Build with custom version information
+docker build . \
+  --build-arg VERSION=1.0.0 \
+  --build-arg GIT_COMMIT=$(git rev-parse --short HEAD) \
+  --build-arg BUILD_TIME=$(date -u '+%Y-%m-%d_%H:%M:%S') \
+  -t terramate-mcp-server:1.0.0
+
+# Run the container
+docker run --rm -it \
+  -e TERRAMATE_API_KEY="your-api-key" \
+  -e TERRAMATE_REGION="eu" \
+  terramate-mcp-server:latest
+```
+
+**Docker Build Arguments:**
+
+| Argument     | Description                    | Default   |
+| ------------ | ------------------------------ | --------- |
+| `VERSION`    | Version to embed in the binary | `dev`     |
+| `GIT_COMMIT` | Git commit SHA to embed        | `unknown` |
+| `BUILD_TIME` | Build timestamp to embed       | `unknown` |
 
 ## Configuration
 
@@ -144,6 +176,7 @@ Authenticates with Terramate Cloud and retrieves organization membership informa
 **Returns:** Organization membership details including UUIDs needed for other tools
 
 **Example:**
+
 ```
 User: "Show me my Terramate organizations"
 Assistant: *calls tmc_authenticate*
@@ -159,9 +192,11 @@ Result: List of organizations with UUIDs and roles
 Lists stacks in an organization with powerful filtering and pagination.
 
 **Required Parameters:**
+
 - `organization_uuid` (string) - Organization UUID from `tmc_authenticate`
 
 **Optional Filters:**
+
 - `repository` (array) - Filter by repository URLs
 - `target` (array) - Filter by target environment
 - `status` (array) - Filter by status (ok, failed, drifted, etc.)
@@ -179,6 +214,7 @@ Lists stacks in an organization with powerful filtering and pagination.
 - `sort` (array) - Sort fields
 
 **Example:**
+
 ```
 User: "Show me all drifted stacks in production"
 Assistant: *calls tmc_list_stacks with drift_status=["drifted"], target=["production"]*
@@ -189,12 +225,14 @@ Assistant: *calls tmc_list_stacks with drift_status=["drifted"], target=["produc
 Retrieves detailed information about a specific stack.
 
 **Required Parameters:**
+
 - `organization_uuid` (string) - Organization UUID
 - `stack_id` (number) - Stack ID
 
 **Returns:** Complete stack details including related stacks and resource information
 
 **Example:**
+
 ```
 User: "Get details for stack ID 123"
 Assistant: *calls tmc_get_stack*
@@ -210,10 +248,12 @@ Result: Full stack metadata, related stacks, resource counts, policy checks
 Lists all drift detection runs for a specific stack.
 
 **Required Parameters:**
+
 - `organization_uuid` (string) - Organization UUID
 - `stack_id` (number) - Stack ID
 
 **Optional Filters:**
+
 - `drift_status` (array) - Filter by status (ok, drifted, failed)
 - `grouping_key` (string) - Filter by CI/CD grouping key
 - `page` (number) - Page number (default: 1)
@@ -222,6 +262,7 @@ Lists all drift detection runs for a specific stack.
 **Returns:** Array of drift runs with metadata (does NOT include terraform plan details)
 
 **Example:**
+
 ```
 User: "Show me drift detection runs for stack 456"
 Assistant: *calls tmc_list_drifts*
@@ -233,11 +274,13 @@ Result: List of drift runs with IDs, statuses, and timestamps
 Retrieves complete drift details including the Terraform plan output.
 
 **Required Parameters:**
+
 - `organization_uuid` (string) - Organization UUID
 - `stack_id` (number) - Stack ID
 - `drift_id` (number) - Drift ID from `tmc_list_drifts`
 
 **Returns:** Full drift object including:
+
 - `drift_details.changeset_ascii` - Terraform plan in ASCII format (up to 4MB)
 - `drift_details.changeset_json` - Terraform plan in JSON format (up to 16MB)
 - `drift_details.provisioner` - Tool used (terraform/opentofu)
@@ -246,6 +289,7 @@ Retrieves complete drift details including the Terraform plan output.
 - Metadata, timestamps, and authentication info
 
 **Example:**
+
 ```
 User: "Show me the terraform plan for drift ID 100 in stack 456"
 Assistant: *calls tmc_get_drift*
@@ -261,9 +305,11 @@ Result: Full terraform plan output ready for AI analysis
 Lists pull requests and merge requests tracked in Terramate Cloud.
 
 **Required Parameters:**
+
 - `organization_uuid` (string) - Organization UUID
 
 **Optional Filters:**
+
 - `status` (array) - Filter by PR status (open, merged, closed, approved, changes_requested, review_required)
 - `repository` (array) - Filter by repository URLs
 - `search` (string) - Search PR number, title, commit SHA, branch names
@@ -274,6 +320,7 @@ Lists pull requests and merge requests tracked in Terramate Cloud.
 **Returns:** Array of review requests with preview summaries (counts only, not plans)
 
 **Example:**
+
 ```
 User: "Show me all open PRs with terraform plan changes"
 Assistant: *calls tmc_list_review_requests with status=["open"]*
@@ -285,13 +332,16 @@ Result: List of PRs with preview.changed_count > 0
 Retrieves complete PR details including terraform plans for ALL affected stacks.
 
 **Required Parameters:**
+
 - `organization_uuid` (string) - Organization UUID
 - `review_request_id` (number) - Review Request ID from list
 
 **Optional Parameters:**
+
 - `exclude_stack_previews` (boolean) - Exclude terraform plans (default: false)
 
 **Returns:** Full PR details including:
+
 - `review_request` - PR metadata (title, branch, status, checks, reviews)
 - `stack_previews[]` - Array of per-stack terraform plans with:
   - `stack` - Full stack object (stack_id, path, meta_id)
@@ -300,6 +350,7 @@ Retrieves complete PR details including terraform plans for ALL affected stacks.
   - `status` - changed, unchanged, failed, etc.
 
 **Example:**
+
 ```
 User: "Show me terraform plans for PR #245"
 Assistant: *finds review_request_id, calls tmc_get_review_request*
@@ -315,9 +366,11 @@ Result: All stack plans with full terraform output for AI analysis
 Lists CI/CD workflow deployments in an organization.
 
 **Required Parameters:**
+
 - `organization_uuid` (string) - Organization UUID
 
 **Optional Filters:**
+
 - `repository` (array) - Filter by repository URLs
 - `status` (array) - Filter by status (ok, failed, processing)
 - `search` (string) - Search commit SHA, title, or branch
@@ -325,12 +378,14 @@ Lists CI/CD workflow deployments in an organization.
 - `per_page` (number) - Items per page (max: 100)
 
 **Returns:** Array of workflow deployments with:
+
 - Status counts (ok_count, failed_count, pending_count, running_count, canceled_count)
 - Commit information
 - Timestamps
 - Optional review_request (if deployed from a PR)
 
 **Example:**
+
 ```
 User: "Show me recent failed deployments"
 Assistant: *calls tmc_list_deployments with status=["failed"]*
@@ -342,10 +397,12 @@ Result: List of failed CI/CD runs with stack counts
 Retrieves detailed deployment information including terraform apply output.
 
 **Required Parameters:**
+
 - `organization_uuid` (string) - Organization UUID
 - `stack_deployment_id` (number) - Stack Deployment ID
 
 **Returns:** Complete deployment details including:
+
 - `changeset_details.changeset_ascii` - Terraform apply plan (up to 4MB)
 - `stack` - Full stack object
 - `cmd` - Command executed
@@ -353,6 +410,7 @@ Retrieves detailed deployment information including terraform apply output.
 - Timestamps (created_at, started_at, finished_at)
 
 **Example:**
+
 ```
 User: "Show me what was deployed for stack deployment 200"
 Assistant: *calls tmc_get_stack_deployment*
@@ -443,7 +501,7 @@ Assistant workflow:
 5. Can propose terraform code changes to reconcile
 
 Example drift plan analysis:
-"The drift shows that the security group description changed from 
+"The drift shows that the security group description changed from
 'Old desc' to 'New desc' outside of Terraform. You have two options:
 1. Update your Terraform code to match the current state
 2. Apply your Terraform to revert the manual change"
@@ -482,17 +540,17 @@ Assistant workflow:
 1. Authenticate and get org UUID
 2. List all drifted stacks:
    tmc_list_stacks(drift_status: ["drifted"])
-   
+
 3. For each drifted stack:
    a. Get drift run history: tmc_list_drifts(stack_id)
    b. Get latest drift details: tmc_get_drift(drift_id)
    c. Analyze the terraform plan
-   
+
 4. Provide summary:
    - Total drifted stacks: 5
    - Most common changes: security group modifications
    - Recommended actions for each drift
-   
+
 5. Assist with remediation planning
 ```
 
@@ -504,18 +562,18 @@ User: "Show me what infrastructure changes are in PR #245"
 Assistant workflow:
 1. Search for the PR:
    tmc_list_review_requests(repository: ["github.com/acme/infra"], search: "245")
-   
+
 2. Get PR details with stack previews:
    tmc_get_review_request(review_request_id: 42)
-   
+
 3. Analyze each stack preview:
    - Stack: /stacks/vpc (changed)
      * Creates: 0, Updates: 1, Deletes: 0
      * Plan: VPC CIDR changing from 10.0.0.0/16 to 10.1.0.0/16
-   
+
    - Stack: /stacks/database (unchanged)
      * No changes
-     
+
 4. Provide assessment:
    "This PR updates the VPC CIDR block. This is a destructive change
     that will require downtime. Recommend reviewing with team lead."
@@ -530,15 +588,15 @@ Assistant workflow:
 1. Find the PR:
    tmc_list_review_requests(search: "123")
    → review_request_id: 42
-   
+
 2. Get PR with stack previews:
    tmc_get_review_request(review_request_id: 42)
-   
+
 3. Find VPC stack in stack_previews:
    for preview in stack_previews:
      if preview.stack.path == "/stacks/vpc":
        terraform_plan = preview.changeset_details.changeset_ascii
-       
+
 4. Display plan:
    "The VPC stack will have these changes:
    - Security group description updated
@@ -553,19 +611,19 @@ User: "Show me all PRs with failed terraform plans"
 Assistant workflow:
 1. List open PRs:
    tmc_list_review_requests(status: ["open"])
-   
+
 2. Filter PRs with failures using preview.failed_count:
    failed_prs = [pr for pr in review_requests if pr.preview.failed_count > 0]
-   
+
 3. For each failed PR, get details:
    tmc_get_review_request(review_request_id)
-   
+
 4. Find failed stacks:
    for stack_preview in stack_previews:
      if stack_preview.status == "failed":
        - Analyze the error in changeset_ascii
        - Suggest fixes
-       
+
 5. Provide summary:
    "PR #245: VPC stack failed - missing required variable
     PR #246: Database stack failed - syntax error in main.tf"
@@ -579,27 +637,27 @@ User: "Help me review the infrastructure changes in PR #200"
 Assistant workflow:
 1. Get PR with all stack plans:
    tmc_get_review_request(review_request_id: 200)
-   
+
 2. Analyze the PR:
    - Title: "feat: Add production database"
    - Branch: feature/prod-db
    - Status: open, awaiting review
    - Checks: 5/5 passing
    - Preview: 3 stacks changed, 0 failed
-   
+
 3. Review each stack plan:
    Stack 1: /stacks/database
    - Creates: 1 RDS instance
    - Security group allows 0.0.0.0/0 ⚠️ SECURITY RISK
-   
+
    Stack 2: /stacks/vpc
    - Updates: Security group rules
    - Looks good ✓
-   
+
 4. Provide review feedback:
    "⚠️ Security concern: Database security group allows public access.
     Recommend restricting to VPC CIDR only.
-    
+
     Suggested fix:
     - Change ingress_cidr_blocks from ['0.0.0.0/0'] to ['10.0.0.0/16']"
 ```
@@ -615,14 +673,14 @@ Assistant workflow:
      repository: ["github.com/acme/infra"],
      status: ["open"]
    )
-   
+
 2. For each PR, check if it affects the VPC stack:
    for pr in review_requests:
      details = tmc_get_review_request(review_request_id: pr.review_request_id)
      for stack_preview in details.stack_previews:
        if stack_preview.stack.path == "/stacks/vpc" and stack_preview.status != "unchanged":
          # Found a PR affecting VPC!
-         
+
 3. Report findings:
    "2 PRs will affect the VPC stack:
    - PR #245: Updates CIDR block (2 resources changed)
@@ -639,13 +697,13 @@ Assistant workflow:
    tmc_list_deployments(
      repository: ["github.com/acme/infrastructure"]
    )
-   
+
 2. Display summary:
    "Recent deployments:
    - Deployment #100 (2 hours ago): ✅ 5/5 stacks succeeded
    - Deployment #99 (5 hours ago): ❌ 3/5 stacks failed
    - Deployment #98 (1 day ago): ✅ 8/8 stacks succeeded"
-   
+
 3. User can drill down on failures
 ```
 
@@ -658,18 +716,18 @@ Assistant workflow:
 1. Get workflow details:
    (Using SDK: client.Deployments.GetWorkflow(ctx, orgUUID, 99))
    Result: Shows 3 stacks failed out of 5
-   
+
 2. List stack deployments in workflow:
    (Using SDK: client.Deployments.ListForWorkflow(ctx, orgUUID, 99, nil))
-   
+
 3. For each failed stack deployment, get details:
    tmc_get_stack_deployment(stack_deployment_id: 200)
-   
+
 4. Analyze the terraform output:
    "Stack /stacks/database failed during apply:
    Error: Resource 'aws_db_instance.main' failed to create
    - Insufficient instance capacity in availability zone
-   
+
    Recommendation: Change instance type or try different AZ"
 ```
 
@@ -682,11 +740,11 @@ Assistant workflow:
 1. Find the stack:
    tmc_list_stacks(search: "vpc")
    → stack_id: 456
-   
+
 2. Get deployment history:
    (Using SDK: client.Deployments.ListStackDeployments with stack filter)
    Or via Stacks service if that endpoint is available
-   
+
 3. Display timeline:
    "VPC Stack Deployment History:
    - Jan 15, 10:00: ✅ Deployed successfully (terraform apply)
@@ -703,17 +761,17 @@ User: "What's the difference between the last deployment and current drift?"
 Assistant workflow:
 1. Get stack:
    tmc_get_stack(stack_id: 456)
-   
+
 2. Get latest deployment:
    (Using SDK: Get deployment history, take most recent)
    tmc_get_stack_deployment(stack_deployment_id: 200)
    Deployment plan: "Deploys VPC with CIDR 10.0.0.0/16"
-   
+
 3. Get latest drift:
    tmc_list_drifts(stack_id: 456)
    tmc_get_drift(drift_id: 100)
    Drift plan: "VPC CIDR changed to 10.1.0.0/16"
-   
+
 4. Compare:
    "The deployment created VPC with 10.0.0.0/16.
     Current drift shows someone manually changed it to 10.1.0.0/16.
@@ -722,39 +780,39 @@ Assistant workflow:
 
 ### 18. Debug Failed Terraform Plan in Pull Request
 
-```
+````
 User: "The database stack terraform plan failed in PR #245. Help me fix it."
 
 AI-Assisted Debugging Workflow:
 1. Find the PR:
    tmc_list_review_requests(search: "245")
    → review_request_id: 42
-   
+
 2. Get PR with stack previews:
    tmc_get_review_request(review_request_id: 42)
    → Find stack_preview where status == "failed"
    → stack_preview_id: 300, stack.path: "/stacks/database"
-   
+
 3. Fetch raw terraform error logs:
    tmc_get_stack_preview_logs(
      organization_uuid: "org-123",
      stack_preview_id: 300,
      channel: "stderr"  ← Error messages only
    )
-   
+
 4. AI analyzes the logs:
    Log output shows:
    "Error: error configuring Terraform AWS Provider: no valid credential sources
     Error: Failed to query available provider packages"
-   
+
 5. AI provides diagnosis and fix:
    "The terraform plan failed because AWS credentials are not configured in your
     GitHub Actions workflow.
-    
+
     Root Cause:
     - Missing AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environment variables
     - The AWS provider cannot authenticate
-    
+
     To Fix - Add to your workflow (.github/workflows/terraform.yml):
     ```yaml
     - name: Configure AWS Credentials
@@ -763,14 +821,14 @@ AI-Assisted Debugging Workflow:
         role-to-assume: arn:aws:iam::123456789:role/github-actions
         aws-region: us-east-1
     ```
-    
+
     Or add secrets:
     ```yaml
     env:
       AWS_ACCESS_KEY_ID: \${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: \${{ secrets.AWS_SECRET_ACCESS_KEY }}
     ```"
-```
+````
 
 ### 19. Debug Failed Deployment in CI/CD
 
@@ -781,11 +839,11 @@ AI-Assisted Deployment Debugging:
 1. Get workflow details:
    (Using SDK: client.Deployments.GetWorkflow(ctx, orgUUID, 99))
    Result: Shows 3 stacks failed: /stacks/database, /stacks/cache, /stacks/queue
-   
+
 2. Get failed stack deployments:
    (Using SDK: client.Deployments.ListForWorkflow(ctx, orgUUID, 99, nil))
    Filter for status == "failed"
-   
+
 3. For the database stack failure, get deployment logs:
    tmc_get_deployment_logs(
      organization_uuid: "org-123",
@@ -793,26 +851,26 @@ AI-Assisted Deployment Debugging:
      deployment_uuid: "deploy-uuid-abc",
      channel: "stderr"
    )
-   
+
 4. AI analyzes terraform apply errors:
    Logs show:
-   "Error: creating RDS DB Instance: InvalidParameterValue: 
+   "Error: creating RDS DB Instance: InvalidParameterValue:
     The parameter MasterUserPassword is not a valid password"
-   
+
 5. AI provides fix:
    "The deployment failed because the RDS master password doesn't meet
     AWS requirements.
-    
+
     Issue:
     - Password must be 8-41 characters
     - Must contain uppercase, lowercase, numbers, and special characters
     - Cannot contain certain special characters: @, \", '
-    
+
     Fix:
     1. Update your password in the secrets manager or tfvars
     2. Ensure it meets AWS RDS password requirements
     3. Common issue: passwords with @ or quotes need to be escaped
-    
+
     Example valid password: MyP@ssw0rd123!
     Re-run the deployment after updating the password."
 ```
@@ -826,10 +884,10 @@ AI-Assisted Deployment Debugging:
 make build
 
 # Build debug binary (faster, includes debug symbols)
-make build-dev
+make build/dev
 
 # Build Docker image
-make build-docker
+make docker/build
 ```
 
 ### Testing
@@ -839,18 +897,11 @@ make build-docker
 make test
 
 # Run tests with coverage
-make test-coverage
+make test/coverage
 
 # Run specific package tests
 go test -v ./sdk/terramate/...
 ```
-
-Current test coverage:
-
-- **sdk/terramate**: 82.5%
-- **tools**: 100%
-- **tools/tmc**: 82.4%
-- **Overall**: 172 tests passing
 
 ### Linting
 
@@ -859,7 +910,7 @@ Current test coverage:
 make lint
 
 # Auto-fix linting issues
-make lint-fix
+make lint/fix
 
 # Format code
 make fmt
@@ -911,10 +962,11 @@ The MCP server handles `SIGINT` and `SIGTERM` signals gracefully:
 For programmatic access to the Terramate Cloud API, see the [SDK documentation](sdk/terramate/README.md).
 
 The SDK provides type-safe Go clients for all Terramate Cloud APIs:
+
 - **Stacks** - Manage infrastructure stacks
 - **Drifts** - Detect and analyze drift
 - **Deployments** - Monitor CI/CD deployments with logs
-- **Review Requests** - Integrate with PRs/MRs  
+- **Review Requests** - Integrate with PRs/MRs
 - **Previews** - Debug failed terraform plans with logs
 - **Memberships** - Organization management
 
@@ -967,6 +1019,59 @@ The client automatically retries on 429 responses with exponential backoff. If y
 - Reduce request frequency
 - Batch operations where possible
 - Contact support for higher rate limits
+
+## CI/CD & Releases
+
+### Continuous Integration
+
+The project uses GitHub Actions for CI/CD. On every push and pull request to `main`, the following checks run:
+
+- **Tests** - Unit tests with race detector and coverage reporting
+- **Linting** - Code quality checks using golangci-lint
+- **Formatting** - Ensures all code is properly formatted
+- **Build** - Verifies the binary builds successfully
+- **Docker** - Tests Docker image builds
+
+### Release Process
+
+When a new release is published on GitHub:
+
+1. A Docker image is automatically built with version information
+2. The image is tagged with multiple tags:
+   - `ghcr.io/terramate-io/terramate-mcp-server:latest`
+   - `ghcr.io/terramate-io/terramate-mcp-server:1.2.3` (exact version)
+   - `ghcr.io/terramate-io/terramate-mcp-server:1.2` (minor version)
+   - `ghcr.io/terramate-io/terramate-mcp-server:1` (major version)
+3. The image is pushed to GitHub Container Registry
+
+### Creating a Release
+
+To create a new release:
+
+```bash
+# Tag the release (use semantic versioning)
+git tag -a v1.2.3 -m "Release v1.2.3"
+git push origin v1.2.3
+
+# Or create a release via GitHub UI
+# The release workflow will automatically build and push the Docker image
+```
+
+### Using Released Docker Images
+
+```bash
+# Pull the latest version
+docker pull ghcr.io/terramate-io/terramate-mcp-server:latest
+
+# Pull a specific version
+docker pull ghcr.io/terramate-io/terramate-mcp-server:1.2.3
+
+# Run the container
+docker run --rm -it \
+  -e TERRAMATE_API_KEY="your-api-key" \
+  -e TERRAMATE_REGION="eu" \
+  ghcr.io/terramate-io/terramate-mcp-server:latest
+```
 
 ## Contributing
 
