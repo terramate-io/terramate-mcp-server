@@ -70,10 +70,137 @@
 - Aim for high coverage on new code and document any gaps in the PR body.
 
 ## Commit & Pull Request Guidelines
-- Use short, imperative commit subjects like `feat: add drift service to sdk` or `fix: docker build issue`.
+
+### Conventional Commits
+Follow the [Conventional Commits](https://www.conventionalcommits.org/) specification for all commit messages:
+
+**Format:**
+```
+<type>[optional scope]: <description>
+
+[optional body]
+
+[optional footer(s)]
+```
+
+**Types:**
+- `feat:` - A new feature (triggers MINOR version bump)
+- `fix:` - A bug fix (triggers PATCH version bump)
+- `docs:` - Documentation only changes
+- `style:` - Code style changes (formatting, missing semicolons, etc.)
+- `refactor:` - Code changes that neither fix a bug nor add a feature
+- `perf:` - Performance improvements
+- `test:` - Adding or updating tests
+- `build:` - Changes to build system or dependencies
+- `ci:` - Changes to CI configuration files and scripts
+- `chore:` - Other changes that don't modify src or test files
+- `revert:` - Reverts a previous commit
+
+**Scope (optional):**
+- `sdk` - Changes to the SDK (`sdk/terramate/`)
+- `tools` - Changes to MCP tools (`tools/`)
+- `cmd` - Changes to CLI (`cmd/terramate-mcp-server/`)
+- `docker` - Docker-related changes
+- `deps` - Dependency updates
+
+**Breaking Changes:**
+- Add `!` after type/scope: `feat!:` or `feat(sdk)!:`
+- Add `BREAKING CHANGE:` footer with description (triggers MAJOR version bump)
+
+**Examples:**
+```
+feat(sdk): add deployments service with log streaming
+
+Add new Deployments service to SDK with support for listing
+workflows, stack deployments, and streaming logs.
+
+Closes #123
+```
+
+```
+fix(tools): correct pagination handling in list_stacks
+
+The per_page parameter was not being passed correctly to the API,
+causing pagination to fail for large stack lists.
+
+Fixes #456
+```
+
+```
+feat(sdk)!: change authentication to use API key instead of OAuth
+
+BREAKING CHANGE: The Client constructor now requires an API key
+instead of OAuth credentials. Update all client initialization code.
+
+Migration guide:
+- Old: terramate.NewClient(oauth)
+- New: terramate.NewClient(apiKey)
+```
+
+```
+docs: update README with new deployment tools examples
+```
+
+**Pull Request Guidelines:**
 - Rebase or squash before raising a PR to keep history linear.
 - PRs should state intent, link issues, list test commands, and add evidence for UX or API changes.
 - Flag configuration changes (new flags, env vars) in the PR description and alert reviewers when credentials are required.
+
+### Changelog Maintenance
+
+The project uses [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format. The changelog must be updated with every notable change.
+
+**When to Update:**
+- Update `CHANGELOG.md` in the SAME PR that introduces the change
+- Add entries to the `[Unreleased]` section under the appropriate category
+- Do NOT create version sections - maintainers do this during release
+
+**Categories:**
+- `Added` - New features, tools, or capabilities
+- `Changed` - Changes in existing functionality
+- `Deprecated` - Soon-to-be removed features
+- `Removed` - Removed features or APIs
+- `Fixed` - Bug fixes
+- `Security` - Security fixes or improvements
+
+**Entry Format:**
+- Use present tense, active voice: "Add drift detection" not "Added drift detection"
+- Start with a verb when possible
+- Be specific and concise
+- Reference PR/issue numbers when applicable
+
+**Examples:**
+```markdown
+## [Unreleased]
+
+### Added
+- Add `tmc_get_deployment_logs` tool for debugging failed deployments (#123)
+- Add retry logic with exponential backoff to HTTP client
+- Add support for custom base URL configuration
+
+### Changed
+- Change default timeout from 30s to 60s for API requests (#456)
+- Improve error messages for authentication failures
+
+### Fixed
+- Fix pagination bug in `tmc_list_stacks` when per_page > 100 (#789)
+- Fix race condition in graceful shutdown handler
+```
+
+**Release Process (Maintainers Only):**
+When creating a release:
+1. Move all `[Unreleased]` items to a new version section
+2. Add the release date: `## [0.0.2] - 2025-11-15`
+3. Update the comparison links at the bottom of the file
+4. Create a new empty `[Unreleased]` section
+5. Commit with message: `chore: release v0.0.2`
+6. Tag the release: `git tag -a v0.0.2 -m "Release v0.0.2"`
+
+**What NOT to Include:**
+- Internal refactorings that don't affect users
+- Test-only changes (unless they add new testing capabilities)
+- Minor typo fixes in code comments
+- Dependency updates (unless they fix a security issue or add new functionality)
 
 ## Security & Configuration Tips
 - Never commit secrets; use environment variables for API keys and tokens.
