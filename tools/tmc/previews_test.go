@@ -49,7 +49,7 @@ func TestGetStackPreviewLogs_Success(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	c, err := terramate.NewClient("key", terramate.WithBaseURL(ts.URL))
+	c, err := terramate.NewClientWithAPIKey("key", terramate.WithBaseURL(ts.URL))
 	if err != nil {
 		t.Fatalf("NewClient error: %v", err)
 	}
@@ -105,7 +105,7 @@ func TestGetStackPreviewLogs_WithChannel(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	c, err := terramate.NewClient("key", terramate.WithBaseURL(ts.URL))
+	c, err := terramate.NewClientWithAPIKey("key", terramate.WithBaseURL(ts.URL))
 	if err != nil {
 		t.Fatalf("NewClient error: %v", err)
 	}
@@ -133,7 +133,7 @@ func TestGetStackPreviewLogs_WithChannel(t *testing.T) {
 }
 
 func TestGetStackPreviewLogs_MissingOrgUUID(t *testing.T) {
-	c, err := terramate.NewClient("key")
+	c, err := terramate.NewClientWithAPIKey("key")
 	if err != nil {
 		t.Fatalf("NewClient error: %v", err)
 	}
@@ -155,7 +155,7 @@ func TestGetStackPreviewLogs_MissingOrgUUID(t *testing.T) {
 }
 
 func TestGetStackPreviewLogs_InvalidPreviewID(t *testing.T) {
-	c, err := terramate.NewClient("key")
+	c, err := terramate.NewClientWithAPIKey("key")
 	if err != nil {
 		t.Fatalf("NewClient error: %v", err)
 	}
@@ -187,7 +187,7 @@ func TestGetStackPreviewLogs_Unauthorized(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	c, err := terramate.NewClient("key", terramate.WithBaseURL(ts.URL))
+	c, err := terramate.NewClientWithAPIKey("key", terramate.WithBaseURL(ts.URL))
 	if err != nil {
 		t.Fatalf("NewClient error: %v", err)
 	}
@@ -226,7 +226,7 @@ func TestGetStackPreviewLogs_NotFound(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	c, err := terramate.NewClient("key", terramate.WithBaseURL(ts.URL))
+	c, err := terramate.NewClientWithAPIKey("key", terramate.WithBaseURL(ts.URL))
 	if err != nil {
 		t.Fatalf("NewClient error: %v", err)
 	}

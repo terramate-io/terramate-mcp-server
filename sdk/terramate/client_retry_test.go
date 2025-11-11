@@ -25,7 +25,7 @@ func TestClient_RetriesOn429(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	c, err := NewClient("key", WithBaseURL(ts.URL), WithTimeout(5*time.Second))
+	c, err := NewClientWithAPIKey("key", WithBaseURL(ts.URL), WithTimeout(5*time.Second))
 	if err != nil {
 		t.Fatalf("NewClient error: %v", err)
 	}
@@ -55,7 +55,7 @@ func TestClient_RetriesOn500(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	c, err := NewClient("key", WithBaseURL(ts.URL), WithTimeout(5*time.Second))
+	c, err := NewClientWithAPIKey("key", WithBaseURL(ts.URL), WithTimeout(5*time.Second))
 	if err != nil {
 		t.Fatalf("NewClient error: %v", err)
 	}
@@ -81,7 +81,7 @@ func TestClient_NoRetryOn400(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	c, err := NewClient("key", WithBaseURL(ts.URL))
+	c, err := NewClientWithAPIKey("key", WithBaseURL(ts.URL))
 	if err != nil {
 		t.Fatalf("NewClient error: %v", err)
 	}
@@ -102,7 +102,7 @@ func TestClient_ContextCancellation(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	c, err := NewClient("key", WithBaseURL(ts.URL))
+	c, err := NewClientWithAPIKey("key", WithBaseURL(ts.URL))
 	if err != nil {
 		t.Fatalf("NewClient error: %v", err)
 	}
@@ -118,7 +118,7 @@ func TestClient_ContextCancellation(t *testing.T) {
 
 func TestWithHTTPClient(t *testing.T) {
 	customClient := &http.Client{Timeout: 1 * time.Second}
-	c, err := NewClient("key", WithHTTPClient(customClient))
+	c, err := NewClientWithAPIKey("key", WithHTTPClient(customClient))
 	if err != nil {
 		t.Fatalf("NewClient error: %v", err)
 	}
@@ -128,14 +128,14 @@ func TestWithHTTPClient(t *testing.T) {
 }
 
 func TestWithHTTPClient_NilError(t *testing.T) {
-	_, err := NewClient("key", WithHTTPClient(nil))
+	_, err := NewClientWithAPIKey("key", WithHTTPClient(nil))
 	if err == nil || err.Error() != "failed to apply client option: HTTP client cannot be nil" {
 		t.Fatalf("expected nil HTTP client error, got: %v", err)
 	}
 }
 
 func TestWithTimeout(t *testing.T) {
-	c, err := NewClient("key", WithTimeout(5*time.Second))
+	c, err := NewClientWithAPIKey("key", WithTimeout(5*time.Second))
 	if err != nil {
 		t.Fatalf("NewClient error: %v", err)
 	}
@@ -145,21 +145,21 @@ func TestWithTimeout(t *testing.T) {
 }
 
 func TestNewClient_EmptyAPIKey(t *testing.T) {
-	_, err := NewClient("")
+	_, err := NewClientWithAPIKey("")
 	if err == nil || err.Error() != "API key is required" {
 		t.Fatalf("expected API key required error, got: %v", err)
 	}
 }
 
 func TestWithRegion_InvalidRegion(t *testing.T) {
-	_, err := NewClient("key", WithRegion("invalid"))
+	_, err := NewClientWithAPIKey("key", WithRegion("invalid"))
 	if err == nil {
 		t.Fatal("expected error for invalid region")
 	}
 }
 
 func TestWithBaseURL_InvalidURL(t *testing.T) {
-	_, err := NewClient("key", WithBaseURL("://invalid"))
+	_, err := NewClientWithAPIKey("key", WithBaseURL("://invalid"))
 	if err == nil {
 		t.Fatal("expected error for invalid base URL")
 	}

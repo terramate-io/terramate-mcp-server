@@ -29,4 +29,20 @@ RUN apk add --no-cache ca-certificates
 
 COPY --from=builder /build/terramate-mcp-server /usr/local/bin/terramate-mcp-server
 
+# The server supports two authentication methods:
+#
+# 1. JWT Token (Recommended):
+#    Mount your credential directory and provide region:
+#    docker run -v ~/.terramate.d:/root/.terramate.d:ro \
+#               -e TERRAMATE_REGION=eu \
+#               ghcr.io/terramate-io/terramate-mcp-server
+#
+# 2. API Key (Alternative approach, creating and managing API keys requires admin privileges):
+#    Provide API key and region via environment variables:
+#    docker run -e TERRAMATE_API_KEY=your-key \
+#               -e TERRAMATE_REGION=eu \
+#               ghcr.io/terramate-io/terramate-mcp-server
+#
+# For more information: https://github.com/terramate-io/terramate-mcp-server
+
 ENTRYPOINT ["/usr/local/bin/terramate-mcp-server"]

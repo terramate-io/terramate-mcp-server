@@ -22,7 +22,7 @@ func TestMembershipsList_ParsesArray(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	c, err := NewClient("key", WithBaseURL(ts.URL))
+	c, err := NewClientWithAPIKey("key", WithBaseURL(ts.URL))
 	if err != nil {
 		t.Fatalf("NewClient error: %v", err)
 	}

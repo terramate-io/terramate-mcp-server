@@ -3,6 +3,7 @@ module github.com/terramate-io/terramate-mcp-server
 go 1.25.0
 
 require (
+	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/golangci/golangci-lint v1.64.8
 	github.com/mark3labs/mcp-go v0.42.0
 	github.com/urfave/cli/v2 v2.27.7

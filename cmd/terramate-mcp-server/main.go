@@ -14,10 +14,15 @@ import (
 
 var (
 	apiKeyFlag = &cli.StringFlag{
-		Name:     "api-key",
-		Usage:    "Terramate Cloud API key",
-		EnvVars:  []string{"TERRAMATE_API_KEY"},
-		Required: true,
+		Name:    "api-key",
+		Usage:   "Terramate Cloud API key",
+		EnvVars: []string{"TERRAMATE_API_KEY"},
+	}
+
+	credentialFileFlag = &cli.StringFlag{
+		Name:    "credential-file",
+		Usage:   "Path to JWT credentials file (default: ~/.terramate.d/credentials.tmrc.json)",
+		EnvVars: []string{"TERRAMATE_CREDENTIAL_FILE"},
 	}
 
 	regionFlag = &cli.StringFlag{
@@ -40,20 +45,23 @@ func main() {
 		Name:        "terramate-mcp-server",
 		Usage:       "Terramate MCP Server",
 		Description: "Terramate MCP server to manage Terramate Cloud and CLI with natural language",
-		Flags:       []cli.Flag{apiKeyFlag, regionFlag, baseURLFlag},
+		Flags:       []cli.Flag{apiKeyFlag, credentialFileFlag, regionFlag, baseURLFlag},
 		Action: func(c *cli.Context) error {
 			apiKey := c.String(apiKeyFlag.Name)
+			credentialFile := c.String(credentialFileFlag.Name)
 			region := c.String(regionFlag.Name)
 			baseURL := c.String(baseURLFlag.Name)
+
 			// Only validate region if provided and using default base URL
 			if baseURL == "https://api.terramate.io" && region != "" && region != "eu" && region != "us" {
 				return fmt.Errorf("invalid region: %s (must be 'eu' or 'us')", region)
 			}
 
 			config := &Config{
-				APIKey:  apiKey,
-				Region:  region,
-				BaseURL: baseURL,
+				APIKey:         apiKey,
+				CredentialFile: credentialFile,
+				Region:         region,
+				BaseURL:        baseURL,
 			}
 
 			server, err := newServer(config)
@@ -80,10 +88,11 @@ func main() {
 				stop()
 			}
 
-			ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
-			defer cancel()
+			// Use context.Background() for shutdown timeout to ensure it's not already canceled
+			shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer shutdownCancel()
 
-			server.stop(ctx)
+			server.stop(shutdownCtx)
 
 			log.Println("Terramate MCP server shut down")
 

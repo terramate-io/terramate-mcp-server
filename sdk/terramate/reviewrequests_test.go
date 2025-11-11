@@ -134,7 +134,7 @@ func TestReviewRequestsList_WithOptions(t *testing.T) {
 }
 
 func TestReviewRequestsList_Validation(t *testing.T) {
-	c, err := NewClient("key")
+	c, err := NewClientWithAPIKey("key")
 	if err != nil {
 		t.Fatalf("NewClient error: %v", err)
 	}
@@ -300,7 +300,7 @@ func TestReviewRequestsGet_ExcludeStackPreviews(t *testing.T) {
 }
 
 func TestReviewRequestsGet_Validation(t *testing.T) {
-	c, err := NewClient("key")
+	c, err := NewClientWithAPIKey("key")
 	if err != nil {
 		t.Fatalf("NewClient error: %v", err)
 	}

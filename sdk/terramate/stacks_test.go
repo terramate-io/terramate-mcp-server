@@ -12,7 +12,7 @@ import (
 func setupTestServer(t *testing.T, handler http.HandlerFunc) (*Client, func()) {
 	t.Helper()
 	ts := httptest.NewServer(handler)
-	c, err := NewClient("test-api-key", WithBaseURL(ts.URL))
+	c, err := NewClientWithAPIKey("test-api-key", WithBaseURL(ts.URL))
 	if err != nil {
 		t.Fatalf("NewClient error: %v", err)
 	}
@@ -144,7 +144,7 @@ func TestStacksList_WithOptions(t *testing.T) {
 }
 
 func TestStacksList_Validation(t *testing.T) {
-	c, err := NewClient("key")
+	c, err := NewClientWithAPIKey("key")
 	if err != nil {
 		t.Fatalf("NewClient error: %v", err)
 	}
@@ -234,7 +234,7 @@ func TestStacksGet_ParsesResponse(t *testing.T) {
 }
 
 func TestStacksGet_Validation(t *testing.T) {
-	c, err := NewClient("key")
+	c, err := NewClientWithAPIKey("key")
 	if err != nil {
 		t.Fatalf("NewClient error: %v", err)
 	}

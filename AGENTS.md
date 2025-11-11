@@ -202,11 +202,146 @@ When creating a release:
 - Minor typo fixes in code comments
 - Dependency updates (unless they fix a security issue or add new functionality)
 
+## Authentication Architecture
+
+### Credential Abstraction
+
+The project uses a credential abstraction layer to support multiple authentication methods:
+
+**Credential Interface** (`sdk/terramate/credential.go`):
+```go
+type Credential interface {
+    ApplyCredentials(req *http.Request) error
+    Name() string
+}
+```
+
+**Implementations:**
+- `JWTCredential` - JWT tokens from `~/.terramate.d/credentials.tmrc.json`
+- `APIKeyCredential` - Organization API keys (requires an admin to issue an API key)
+
+### JWT Token Authentication (Preferred)
+
+**Why JWT is Preferred:**
+- **Self-service**: Users authenticate via `terramate cloud login` without admin intervention
+- **Admin requirement**: Organization API keys can ONLY be created by organization administrators
+- **User-level permissions**: Actions tracked per user for audit trails
+- **Multiple providers**: Google, GitHub, GitLab, SSO support
+
+**JWT Credential File:**
+- **Location**: `~/.terramate.d/credentials.tmrc.json`
+- **Format**:
+  ```json
+  {
+    "provider": "Google",
+    "id_token": "eyJhbGc...",
+    "refresh_token": "1//0g..."
+  }
+  ```
+- **Managed by**: Terramate CLI (`terramate cloud login`)
+
+**Implementation Details:**
+- JWT tokens are parsed ONLY to extract provider information (for display purposes)
+- No client-side expiration checking - the API server is the source of truth for token validity
+- When API returns 401 Unauthorized, users receive helpful error message with guidance
+- Uses `Authorization: Bearer <token>` header
+- No automatic refresh in MCP server (users must re-run `terramate cloud login`)
+
+**Security Note:**
+The client does NOT validate JWT expiration locally. This is intentional and follows security best practices:
+- Client-side parsing uses `ParseUnverified()` which doesn't verify signatures
+- Making security decisions based on unverified data would be unsafe
+- The API server is the authoritative source for token validation
+- 401 errors from API provide clear guidance to users to refresh credentials
+
+### API Key Authentication (issuing an organization API key requires admin privileges)
+
+**⚠️ Requires Admin Privileges:**
+Organization API keys can only be created and managed by organization administrators. This creates a bottleneck for individual developers and is why JWT authentication is strongly preferred.
+
+**Usage:**
+- Uses HTTP Basic Auth with API key as username, empty password
+- Never expires from client perspective
+- Environment variable: `TERRAMATE_API_KEY`
+- CLI flag: `--api-key`
+
+### Authentication Priority (in code)
+
+When initializing the MCP server:
+1. Check for `TERRAMATE_API_KEY` environment variable or `--api-key` flag
+2. If API key present → use `APIKeyCredential` (show deprecation warning)
+3. If no API key → load JWT from credential file
+4. If neither → return helpful error message
+
+### SDK Client Constructors
+
+**Main constructor** (accepts any Credential):
+```go
+client, err := terramate.NewClient(credential, opts...)
+```
+
+**Convenience constructors:**
+```go
+// For API key (backward compatible)
+client, err := terramate.NewClientWithAPIKey(apiKey, opts...)
+
+// For JWT token
+client, err := terramate.NewClientWithJWT(jwtToken, opts...)
+
+// Load JWT from file
+cred, err := terramate.LoadJWTFromFile("~/.terramate.d/credentials.tmrc.json")
+client, err := terramate.NewClient(cred, opts...)
+```
+
+### When Adding New SDK Methods
+
+Always use the client's credential for authentication:
+```go
+func (s *Service) SomeMethod(ctx context.Context, ...) error {
+    // The client's credential is automatically applied via newRequest()
+    req, err := s.client.newRequest(ctx, "GET", path, nil)
+    // ...
+}
+```
+
+**Do NOT:**
+- Manually set Authorization headers
+- Assume API key is always available
+- Perform client-side JWT validation or expiration checking
+
+**DO:**
+- Let the credential interface handle authentication
+- Trust the client's newRequest() method
+- Let the API server validate credentials (it's the source of truth)
+- Write tests for both JWT and API key scenarios
+
 ## Security & Configuration Tips
-- Never commit secrets; use environment variables for API keys and tokens.
-- Required environment variables:
-  - `TERRAMATE_API_KEY` - Terramate Cloud API key (for running the server)
-  - `TERRAMATE_REGION` - Terramate Cloud region: `eu` or `us` (for running the server)
-  - `GITHUB_TOKEN` - GitHub token with packages:write scope (for Docker push)
-  - `GITHUB_USER` - GitHub username (for Docker push)
-- Docker images are published to `ghcr.io/terramate-io/terramate-mcp-server`.
+
+### Authentication
+- **Never commit secrets**: Use environment variables or credential files
+- **JWT credentials**: Stored in `~/.terramate.d/credentials.tmrc.json` with `0600` permissions
+- **Prefer JWT over API key**: JWT enables self-service and better audit trails
+- **API keys require admin**: Only organization administrators can create API keys
+
+### Environment Variables
+
+**For Running Server:**
+- `TERRAMATE_REGION` - Terramate Cloud region: `eu` or `us` (required)
+- `TERRAMATE_API_KEY` - Organization API key (deprecated, for backward compatibility)
+- `TERRAMATE_CREDENTIAL_FILE` - Custom JWT credential file path (optional, defaults to `~/.terramate.d/credentials.tmrc.json`)
+
+**For Docker Push:**
+- `GITHUB_TOKEN` - GitHub token with packages:write scope
+- `GITHUB_USER` - GitHub username
+
+### Docker
+- Docker images are published to `ghcr.io/terramate-io/terramate-mcp-server`
+- For JWT auth in Docker: mount `~/.terramate.d` directory as read-only volume
+- Example: `docker run -v ~/.terramate.d:/root/.terramate.d:ro ...`
+
+### Credential File Security
+- File permissions MUST be `0600` (read/write owner only) - enforced by the SDK
+- The SDK will refuse to load credential files with insecure permissions
+- Never commit credential files to git
+- `.terramate.d/` should be in `.gitignore`
+- MCP server reads credentials on startup only (not monitored for changes)

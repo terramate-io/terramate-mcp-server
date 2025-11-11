@@ -23,7 +23,7 @@ func TestAuthenticate_Success(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	c, err := terramate.NewClient("key", terramate.WithBaseURL(ts.URL))
+	c, err := terramate.NewClientWithAPIKey("key", terramate.WithBaseURL(ts.URL))
 	if err != nil {
 		t.Fatalf("NewClient error: %v", err)
 	}
@@ -66,7 +66,7 @@ func TestAuthenticate_Unauthorized(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	c, err := terramate.NewClient("key", terramate.WithBaseURL(ts.URL))
+	c, err := terramate.NewClientWithAPIKey("key", terramate.WithBaseURL(ts.URL))
 	if err != nil {
 		t.Fatalf("NewClient error: %v", err)
 	}
@@ -98,7 +98,7 @@ func TestAuthenticate_NoMemberships(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	c, err := terramate.NewClient("key", terramate.WithBaseURL(ts.URL))
+	c, err := terramate.NewClientWithAPIKey("key", terramate.WithBaseURL(ts.URL))
 	if err != nil {
 		t.Fatalf("NewClient error: %v", err)
 	}
@@ -130,7 +130,7 @@ func TestAuthenticate_ServerError(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	c, err := terramate.NewClient("key", terramate.WithBaseURL(ts.URL))
+	c, err := terramate.NewClientWithAPIKey("key", terramate.WithBaseURL(ts.URL))
 	if err != nil {
 		t.Fatalf("NewClient error: %v", err)
 	}

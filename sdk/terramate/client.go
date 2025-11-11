@@ -26,8 +26,8 @@ type Client struct {
 	// Base URL for API requests
 	baseURL *url.URL
 
-	// API key for authentication
-	apiKey string
+	// Credential for authentication (JWT token or API key)
+	credential Credential
 
 	// User agent for requests
 	userAgent string
@@ -44,10 +44,10 @@ type Client struct {
 // ClientOption is a functional option for configuring the Client
 type ClientOption func(*Client) error
 
-// NewClient creates a new Terramate Cloud API client
-func NewClient(apiKey string, opts ...ClientOption) (*Client, error) {
-	if apiKey == "" {
-		return nil, fmt.Errorf("API key is required")
+// NewClient creates a new Terramate Cloud API client with the given credential
+func NewClient(credential Credential, opts ...ClientOption) (*Client, error) {
+	if credential == nil {
+		return nil, fmt.Errorf("credential is required")
 	}
 
 	// Default base URL
@@ -60,9 +60,9 @@ func NewClient(apiKey string, opts ...ClientOption) (*Client, error) {
 		httpClient: &http.Client{
 			Timeout: defaultTimeout,
 		},
-		baseURL:   baseURL,
-		apiKey:    apiKey,
-		userAgent: version.UserAgent(),
+		baseURL:    baseURL,
+		credential: credential,
+		userAgent:  version.UserAgent(),
 	}
 
 	// Apply options
@@ -81,6 +81,30 @@ func NewClient(apiKey string, opts ...ClientOption) (*Client, error) {
 	client.Previews = &PreviewsService{client: client}
 
 	return client, nil
+}
+
+// NewClientWithAPIKey creates a new Terramate Cloud API client with an API key
+// This is a convenience function for backward compatibility with API key authentication
+func NewClientWithAPIKey(apiKey string, opts ...ClientOption) (*Client, error) {
+	if apiKey == "" {
+		return nil, fmt.Errorf("API key is required")
+	}
+	return NewClient(NewAPIKeyCredential(apiKey), opts...)
+}
+
+// NewClientWithJWT creates a new Terramate Cloud API client with a JWT token
+// This is a convenience function for JWT token authentication
+func NewClientWithJWT(jwtToken string, opts ...ClientOption) (*Client, error) {
+	if jwtToken == "" {
+		return nil, fmt.Errorf("JWT token is required")
+	}
+
+	credential, err := NewJWTCredential(jwtToken, "")
+	if err != nil {
+		return nil, fmt.Errorf("invalid JWT token: %w", err)
+	}
+
+	return NewClient(credential, opts...)
 }
 
 // WithBaseURL sets a custom base URL for the API
@@ -158,9 +182,10 @@ func (c *Client) newRequest(ctx context.Context, method, path string, body io.Re
 	req.Header.Set("Content-Type", contentTypeJSON)
 	req.Header.Set("Accept", contentTypeJSON)
 
-	// API key authentication: Basic Auth with API key as username, empty password
-	// @TODO: Needs to be updated in the future whenever we want to start supporting JWT tokens
-	req.SetBasicAuth(c.apiKey, "")
+	// Apply credentials (JWT Bearer token or API Key Basic Auth)
+	if err := c.credential.ApplyCredentials(req); err != nil {
+		return nil, fmt.Errorf("failed to apply credentials: %w", err)
+	}
 
 	return req, nil
 }
@@ -254,6 +279,20 @@ func parseAPIError(resp *http.Response, body []byte) error {
 			apiErr.Details = errResp.Details
 		}
 	}
+
+	// For 401 Unauthorized, provide helpful guidance
+	if resp.StatusCode == http.StatusUnauthorized {
+		apiErr.Message = fmt.Sprintf(
+			"Authentication failed: %s\n\n"+
+				"Your credentials may be invalid or expired.\n"+
+				"To fix this:\n"+
+				"  1. Run 'terramate cloud login' to refresh your JWT credentials\n"+
+				"  2. Or provide a valid API key with --api-key flag\n"+
+				"  3. Or set TERRAMATE_API_KEY environment variable",
+			apiErr.Message,
+		)
+	}
+
 	return apiErr
 }
 

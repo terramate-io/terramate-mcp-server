@@ -131,7 +131,7 @@ func TestDriftsListForStack_WithOptions(t *testing.T) {
 }
 
 func TestDriftsListForStack_Validation(t *testing.T) {
-	c, err := NewClient("key")
+	c, err := NewClientWithAPIKey("key")
 	if err != nil {
 		t.Fatalf("NewClient error: %v", err)
 	}
@@ -528,7 +528,7 @@ func TestDriftsGet_ParsesResponse(t *testing.T) {
 }
 
 func TestDriftsGet_Validation(t *testing.T) {
-	c, err := NewClient("key")
+	c, err := NewClientWithAPIKey("key")
 	if err != nil {
 		t.Fatalf("NewClient error: %v", err)
 	}

@@ -58,7 +58,7 @@ func TestListReviewRequests_Success(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	c, err := terramate.NewClient("key", terramate.WithBaseURL(ts.URL))
+	c, err := terramate.NewClientWithAPIKey("key", terramate.WithBaseURL(ts.URL))
 	if err != nil {
 		t.Fatalf("NewClient error: %v", err)
 	}
@@ -124,7 +124,7 @@ func TestListReviewRequests_WithFilters(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	c, err := terramate.NewClient("key", terramate.WithBaseURL(ts.URL))
+	c, err := terramate.NewClientWithAPIKey("key", terramate.WithBaseURL(ts.URL))
 	if err != nil {
 		t.Fatalf("NewClient error: %v", err)
 	}
@@ -154,7 +154,7 @@ func TestListReviewRequests_WithFilters(t *testing.T) {
 }
 
 func TestListReviewRequests_MissingOrgUUID(t *testing.T) {
-	c, err := terramate.NewClient("key")
+	c, err := terramate.NewClientWithAPIKey("key")
 	if err != nil {
 		t.Fatalf("NewClient error: %v", err)
 	}
@@ -181,7 +181,7 @@ func TestListReviewRequests_MissingOrgUUID(t *testing.T) {
 }
 
 func TestListReviewRequests_InvalidPerPage(t *testing.T) {
-	c, err := terramate.NewClient("key")
+	c, err := terramate.NewClientWithAPIKey("key")
 	if err != nil {
 		t.Fatalf("NewClient error: %v", err)
 	}
@@ -213,7 +213,7 @@ func TestListReviewRequests_Unauthorized(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	c, err := terramate.NewClient("key", terramate.WithBaseURL(ts.URL))
+	c, err := terramate.NewClientWithAPIKey("key", terramate.WithBaseURL(ts.URL))
 	if err != nil {
 		t.Fatalf("NewClient error: %v", err)
 	}
@@ -297,7 +297,7 @@ func TestGetReviewRequest_Success(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	c, err := terramate.NewClient("key", terramate.WithBaseURL(ts.URL))
+	c, err := terramate.NewClientWithAPIKey("key", terramate.WithBaseURL(ts.URL))
 	if err != nil {
 		t.Fatalf("NewClient error: %v", err)
 	}
@@ -341,7 +341,7 @@ func TestGetReviewRequest_Success(t *testing.T) {
 }
 
 func TestGetReviewRequest_MissingOrgUUID(t *testing.T) {
-	c, err := terramate.NewClient("key")
+	c, err := terramate.NewClientWithAPIKey("key")
 	if err != nil {
 		t.Fatalf("NewClient error: %v", err)
 	}
@@ -370,7 +370,7 @@ func TestGetReviewRequest_MissingOrgUUID(t *testing.T) {
 }
 
 func TestGetReviewRequest_MissingReviewRequestID(t *testing.T) {
-	c, err := terramate.NewClient("key")
+	c, err := terramate.NewClientWithAPIKey("key")
 	if err != nil {
 		t.Fatalf("NewClient error: %v", err)
 	}
@@ -399,7 +399,7 @@ func TestGetReviewRequest_MissingReviewRequestID(t *testing.T) {
 }
 
 func TestGetReviewRequest_InvalidReviewRequestID(t *testing.T) {
-	c, err := terramate.NewClient("key")
+	c, err := terramate.NewClientWithAPIKey("key")
 	if err != nil {
 		t.Fatalf("NewClient error: %v", err)
 	}
@@ -438,7 +438,7 @@ func TestGetReviewRequest_Unauthorized(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	c, err := terramate.NewClient("key", terramate.WithBaseURL(ts.URL))
+	c, err := terramate.NewClientWithAPIKey("key", terramate.WithBaseURL(ts.URL))
 	if err != nil {
 		t.Fatalf("NewClient error: %v", err)
 	}
@@ -477,7 +477,7 @@ func TestGetReviewRequest_NotFound(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	c, err := terramate.NewClient("key", terramate.WithBaseURL(ts.URL))
+	c, err := terramate.NewClientWithAPIKey("key", terramate.WithBaseURL(ts.URL))
 	if err != nil {
 		t.Fatalf("NewClient error: %v", err)
 	}
