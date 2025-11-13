@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.2] - 2025-11-13
+
 ### Added
 - Add JWT token authentication support for user-level credentials
 - Add `--credential-file` flag to specify custom JWT credential file location
@@ -65,6 +67,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Automated Docker image publishing to GitHub Container Registry
 - Documentation and usage examples
 
-[unreleased]: https://github.com/terramate-io/terramate-mcp-server/compare/v0.0.1...HEAD
+[unreleased]: https://github.com/terramate-io/terramate-mcp-server/compare/v0.0.2...HEAD
+[0.0.2]: https://github.com/terramate-io/terramate-mcp-server/compare/v0.0.1...v0.0.2
 [0.0.1]: https://github.com/terramate-io/terramate-mcp-server/releases/tag/v0.0.1
 
