@@ -7,7 +7,7 @@ import (
 )
 
 func TestNew(t *testing.T) {
-	c, err := terramate.NewClient("key")
+	c, err := terramate.NewClientWithAPIKey("key")
 	if err != nil {
 		t.Fatalf("NewClient error: %v", err)
 	}
@@ -22,7 +22,7 @@ func TestNew(t *testing.T) {
 }
 
 func TestTools(t *testing.T) {
-	c, err := terramate.NewClient("key")
+	c, err := terramate.NewClientWithAPIKey("key")
 	if err != nil {
 		t.Fatalf("NewClient error: %v", err)
 	}

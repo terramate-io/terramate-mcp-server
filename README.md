@@ -22,7 +22,9 @@ This server enables natural language interactions with your Terramate Cloud orga
 
 - Go 1.25.0 or later
 - A [Terramate Cloud](https://cloud.terramate.io) account
-- A Terramate Cloud API key ([generate one here](https://cloud.terramate.io/o/YOUR_ORG/settings/api-keys))
+- Authentication credentials:
+  - **Recommended**: Run `terramate cloud login` (self-service, no admin required)
+  - **Alternative**: Organization API key ([requires admin to generate](https://cloud.terramate.io/o/YOUR_ORG/settings/api-keys))
 
 ### From Source
 
@@ -42,7 +44,14 @@ Pull the pre-built image from GitHub Container Registry:
 # Pull the latest version
 docker pull ghcr.io/terramate-io/terramate-mcp-server:latest
 
-# Run the container
+# Run with JWT authentication (recommended)
+# First: terramate cloud login
+docker run --rm -it \
+  -v ~/.terramate.d:/root/.terramate.d:ro \
+  -e TERRAMATE_REGION="eu" \
+  ghcr.io/terramate-io/terramate-mcp-server:latest
+
+# Or with API key (issuing an organization API key requires admin privileges)
 docker run --rm -it \
   -e TERRAMATE_API_KEY="your-api-key" \
   -e TERRAMATE_REGION="eu" \
@@ -62,7 +71,13 @@ docker build . \
   --build-arg BUILD_TIME=$(date -u '+%Y-%m-%d_%H:%M:%S') \
   -t terramate-mcp-server:1.0.0
 
-# Run the container
+# Run with JWT authentication (recommended)
+docker run --rm -it \
+  -v ~/.terramate.d:/root/.terramate.d:ro \
+  -e TERRAMATE_REGION="eu" \
+  terramate-mcp-server:latest
+
+# Or with API key (deprecated)
 docker run --rm -it \
   -e TERRAMATE_API_KEY="your-api-key" \
   -e TERRAMATE_REGION="eu" \
@@ -77,15 +92,103 @@ docker run --rm -it \
 | `GIT_COMMIT` | Git commit SHA to embed        | `unknown` |
 | `BUILD_TIME` | Build timestamp to embed       | `unknown` |
 
+## Authentication
+
+The MCP server supports two authentication methods: **JWT Token** (recommended) and **API Key** (requires admin privileges).
+
+### JWT Token Authentication (Recommended)
+
+JWT tokens provide user-level authentication using your Terramate Cloud credentials obtained via `terramate cloud login`.
+
+**Why JWT is Preferred:**
+- ✅ **Self-service**: Any user can authenticate themselves without admin intervention
+- ✅ **No admin required**: Unlike organization API keys which require admin privileges to create
+- ✅ **User-level permissions**: Actions are tracked per user for better audit trails
+- ✅ **Multiple providers**: Google, GitHub, GitLab, SSO support
+- ✅ **Automatic token management**: Terramate CLI handles token lifecycle
+- ✅ **No manual credential management**: Simple `terramate cloud login` command
+
+**Benefits:**
+- User-level permissions and audit trails
+- Support for multiple authentication providers (Google, GitHub, GitLab, SSO)
+- Automatic token management via Terramate CLI
+- No manual credential management
+- **No organization admin required** - users can self-authenticate
+
+**Setup:**
+
+1. **Login via Terramate CLI:**
+   ```bash
+   terramate cloud login
+   ```
+   This opens your browser and stores JWT credentials in `~/.terramate.d/credentials.tmrc.json`
+
+2. **Run the MCP server** (auto-detects credentials):
+   ```bash
+   ./bin/terramate-mcp-server --region eu
+   ```
+
+3. **Or specify custom credential file location:**
+   ```bash
+   ./bin/terramate-mcp-server --credential-file /path/to/credentials.tmrc.json --region eu
+   ```
+
+**Credential File Location:**
+- Default: `~/.terramate.d/credentials.tmrc.json`
+- Custom: Set via `--credential-file` flag or `TERRAMATE_CREDENTIAL_FILE` environment variable
+
+**Supported Providers:**
+- Google OAuth
+- GitHub OAuth  
+- GitLab OAuth
+- SSO
+
+**Token Expiration:**
+JWT tokens typically expire after 1 hour. When expired, run `terramate cloud login` to refresh and restart the MCP server.
+
+### API Key Authentication
+
+API keys provide organization-level authentication.
+
+
+**⚠️ Requires Admin Privileges:** Organization API keys can only be created and managed by organization administrators in Terramate Cloud. Regular users cannot generate API keys, making JWT authentication the preferred method for individual developers.
+
+**Setup:**
+
+```bash
+./bin/terramate-mcp-server --api-key "your-api-key" --region eu
+```
+
+Or with environment variable:
+
+```bash
+export TERRAMATE_API_KEY="your-api-key"
+export TERRAMATE_REGION="eu"
+./bin/terramate-mcp-server
+```
+
+**Obtain API Key (Requires Admin):**
+Organization administrators can generate API keys from [Terramate Cloud Settings](https://cloud.terramate.io/o/YOUR_ORG/settings/api-keys)
+
+### Authentication Priority
+
+When both authentication methods are available, the MCP server uses this precedence:
+
+1. **API Key** (if `--api-key` flag or `TERRAMATE_API_KEY` env var is set)
+2. **JWT Token** from credential file
+
+This ensures backward compatibility while allowing migration to JWT authentication.
+
 ## Configuration
 
 The server accepts configuration via command-line flags or environment variables:
 
-| Flag         | Environment Variable | Required | Default                    | Description                           |
-| ------------ | -------------------- | -------- | -------------------------- | ------------------------------------- |
-| `--api-key`  | `TERRAMATE_API_KEY`  | ✅       | -                          | Your Terramate Cloud API key          |
-| `--region`   | `TERRAMATE_REGION`   | ⚠️\*     | -                          | Terramate Cloud region (`eu` or `us`) |
-| `--base-url` | `TERRAMATE_BASE_URL` | ❌       | `https://api.terramate.io` | Custom API base URL                   |
+| Flag                 | Environment Variable        | Required | Default                                           | Description                                                        |
+| -------------------- | --------------------------- | -------- | ------------------------------------------------- | ------------------------------------------------------------------ |
+| `--api-key`          | `TERRAMATE_API_KEY`         | ❌       | -                                                 | Terramate Cloud API key (deprecated, prefer JWT authentication)   |
+| `--credential-file`  | `TERRAMATE_CREDENTIAL_FILE` | ❌       | `~/.terramate.d/credentials.tmrc.json`            | Path to JWT credentials file                                       |
+| `--region`           | `TERRAMATE_REGION`          | ⚠️\*     | -                                                 | Terramate Cloud region (`eu` or `us`)                              |
+| `--base-url`         | `TERRAMATE_BASE_URL`        | ❌       | `https://api.terramate.io`                        | Custom API base URL                                                |
 
 \* Required when using the default base URL. Optional if `--base-url` is specified.
 
@@ -102,6 +205,24 @@ When using `--region eu`, the server automatically uses the EU endpoint. When us
 
 #### Standalone Mode
 
+**With JWT Authentication (Recommended):**
+
+```bash
+# First, login via Terramate CLI
+terramate cloud login
+
+# Run MCP server (auto-loads credentials)
+./bin/terramate-mcp-server --region eu
+
+# Or specify custom credential file
+./bin/terramate-mcp-server --credential-file /path/to/credentials.tmrc.json --region eu
+
+# Custom base URL (bypasses region)
+./bin/terramate-mcp-server --base-url="https://custom.api.example.com"
+```
+
+**With API Key:**
+
 ```bash
 # Using environment variables
 export TERRAMATE_API_KEY="your-api-key"
@@ -110,12 +231,21 @@ export TERRAMATE_REGION="eu"
 
 # Using command-line flags
 ./bin/terramate-mcp-server --api-key="your-api-key" --region="eu"
-
-# Custom base URL (bypasses region)
-./bin/terramate-mcp-server --api-key="your-api-key" --base-url="https://custom.api.example.com"
 ```
 
 #### With Docker
+
+**With JWT Authentication:**
+
+```bash
+# Mount credential file from host
+docker run --rm -it \
+  -v ~/.terramate.d:/root/.terramate.d:ro \
+  -e TERRAMATE_REGION="eu" \
+  ghcr.io/terramate-io/terramate-mcp-server:latest
+```
+
+**With API Key:**
 
 ```bash
 docker run --rm -it \
@@ -130,7 +260,44 @@ The server communicates via stdio using the Model Context Protocol. Configure yo
 
 #### Claude Desktop
 
+**With JWT Authentication (Recommended):**
+
+**Option 1: Direct Binary**
+
 Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "terramate": {
+      "command": "/path/to/bin/terramate-mcp-server",
+      "args": ["--region", "eu"]
+    }
+  }
+}
+```
+
+**Option 2: With Auto-Refresh (Recommended)**
+
+Automatically refreshes token on startup:
+
+```json
+{
+  "mcpServers": {
+    "terramate": {
+      "command": "bash",
+      "args": [
+        "-c",
+        "terramate cloud info -v >/dev/null 2>&1 || true; /path/to/bin/terramate-mcp-server --region eu"
+      ]
+    }
+  }
+}
+```
+
+**Note:** Claude Desktop runs in your user context, so it automatically has access to `~/.terramate.d/credentials.tmrc.json`. The auto-refresh command ensures your token is fresh on every startup.
+
+**With API Key:**
 
 ```json
 {
@@ -148,7 +315,44 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
 #### Cursor
 
+**With JWT Authentication (Recommended):**
+
+**Option 1: Direct Binary**
+
 Add to your Cursor MCP settings:
+
+```json
+{
+  "mcpServers": {
+    "terramate": {
+      "command": "/path/to/bin/terramate-mcp-server",
+      "args": ["--region", "eu"]
+    }
+  }
+}
+```
+
+**Option 2: Docker with Auto-Refresh (Recommended)**
+
+Automatically refreshes token on startup:
+
+```json
+{
+  "mcpServers": {
+    "terramate": {
+      "command": "bash",
+      "args": [
+        "-c",
+        "terramate cloud info -v >/dev/null 2>&1 || true; docker run -i --rm -v ~/.terramate.d:/root/.terramate.d:ro -e TERRAMATE_REGION=eu ghcr.io/terramate-io/terramate-mcp-server:latest"
+      ]
+    }
+  }
+}
+```
+
+This runs `terramate cloud info` before starting the server, which automatically refreshes expired tokens using the refresh_token from your credential file.
+
+**With API Key (Legacy):**
 
 ```json
 {
@@ -1066,7 +1270,14 @@ docker pull ghcr.io/terramate-io/terramate-mcp-server:latest
 # Pull a specific version
 docker pull ghcr.io/terramate-io/terramate-mcp-server:1.2.3
 
-# Run the container
+# Run with JWT authentication (recommended)
+# First: terramate cloud login
+docker run --rm -it \
+  -v ~/.terramate.d:/root/.terramate.d:ro \
+  -e TERRAMATE_REGION="eu" \
+  ghcr.io/terramate-io/terramate-mcp-server:latest
+
+# Or run with API key (deprecated)
 docker run --rm -it \
   -e TERRAMATE_API_KEY="your-api-key" \
   -e TERRAMATE_REGION="eu" \

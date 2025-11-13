@@ -7,12 +7,12 @@ A production-ready Go SDK for interacting with the [Terramate Cloud API](https:/
 
 ## Features
 
-- 🔐 **Secure Authentication** - API key-based authentication with automatic retry logic
+- 🔐 **Flexible Authentication** - JWT token (recommended) or API key authentication with automatic retry logic
 - 🌍 **Multi-Region Support** - EU and US region endpoints
 - 📦 **Complete API Coverage** - Stacks, Drifts, Deployments, Review Requests, and Memberships
 - 🔄 **Automatic Retries** - Built-in exponential backoff for transient failures
 - ⏱️ **Context Support** - Cancellation and timeout handling
-- 🧪 **Well Tested** - 82%+ test coverage with 140+ tests
+- 🧪 **Well Tested** - 79%+ test coverage with 160+ tests
 - 📝 **Type Safe** - Full Go type definitions for all API resources
 
 ## Installation
@@ -22,6 +22,8 @@ go get github.com/terramate-io/terramate-mcp-server/sdk/terramate
 ```
 
 ## Quick Start
+
+### With JWT Authentication (Recommended)
 
 ```go
 package main
@@ -35,8 +37,15 @@ import (
 )
 
 func main() {
-    // Create client
-    client, err := terramate.NewClient("your-api-key",
+    // Load JWT credentials from ~/.terramate.d/credentials.tmrc.json
+    credPath, _ := terramate.GetDefaultCredentialPath()
+    credential, err := terramate.LoadJWTFromFile(credPath)
+    if err != nil {
+        log.Fatalf("Failed to load credentials: %v\nRun 'terramate cloud login' first", err)
+    }
+    
+    // Create client with JWT
+    client, err := terramate.NewClient(credential,
         terramate.WithRegion("eu"))
     if err != nil {
         log.Fatal(err)
@@ -64,43 +73,71 @@ func main() {
 }
 ```
 
+### With API Key (requires admin privileges)
+
+```go
+// Create client with API key
+client, err := terramate.NewClientWithAPIKey("your-api-key",
+    terramate.WithRegion("eu"))
+```
+
 ## Client Configuration
 
-### Creating a Client
+### Authentication Methods
 
+The SDK supports two authentication methods:
+
+**JWT Token (Recommended):**
 ```go
 import "github.com/terramate-io/terramate-mcp-server/sdk/terramate"
 
-// Basic client (EU region by default)
-client, err := terramate.NewClient("your-api-key")
+// Load from default location (~/.terramate.d/credentials.tmrc.json)
+credPath, _ := terramate.GetDefaultCredentialPath()
+credential, err := terramate.LoadJWTFromFile(credPath)
+if err != nil {
+    log.Fatal(err)
+}
+
+client, err := terramate.NewClient(credential, terramate.WithRegion("eu"))
+
+// Or with raw JWT token
+client, err := terramate.NewClientWithJWT(jwtToken, terramate.WithRegion("eu"))
+
+// Or load from custom path
+credential, err := terramate.LoadJWTFromFile("/path/to/credentials.tmrc.json")
+client, err := terramate.NewClient(credential, terramate.WithRegion("eu"))
+```
+
+**API Key (requires admin privileges):**
+```go
+// Basic client with API key
+client, err := terramate.NewClientWithAPIKey("your-api-key")
 
 // With region
-client, err := terramate.NewClient(
+client, err := terramate.NewClientWithAPIKey(
     "your-api-key",
     terramate.WithRegion("us"),  // or "eu"
 )
+```
 
+### Client Options
+
+```go
 // With custom base URL
-client, err := terramate.NewClient(
-    "your-api-key",
-    terramate.WithBaseURL("https://custom.api.example.com"),
-)
+client, err := terramate.NewClient(credential,
+    terramate.WithBaseURL("https://custom.api.example.com"))
 
 // With custom timeout
-client, err := terramate.NewClient(
-    "your-api-key",
-    terramate.WithTimeout(60 * time.Second),
-)
+client, err := terramate.NewClient(credential,
+    terramate.WithTimeout(60 * time.Second))
 
 // With custom HTTP client
 httpClient := &http.Client{
     Timeout: 30 * time.Second,
     Transport: customTransport,
 }
-client, err := terramate.NewClient(
-    "your-api-key",
-    terramate.WithHTTPClient(httpClient),
-)
+client, err := terramate.NewClient(credential,
+    terramate.WithHTTPClient(httpClient))
 ```
 
 ### Region Endpoints

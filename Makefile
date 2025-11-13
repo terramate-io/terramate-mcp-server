@@ -172,20 +172,41 @@ uninstall: ## Uninstall binary from $GOPATH/bin
 
 ## Run targets
 
-run: build ## Build and run the MCP server
+run: build ## Build and run the MCP server (supports JWT or API key auth)
 	@echo "Starting MCP server..."
-	./$(BUILD_DIR)/$(BINARY_NAME) --api-key=${TERRAMATE_API_KEY} --region=${TERRAMATE_REGION}
+	@if [ -n "${TERRAMATE_API_KEY}" ]; then \
+		echo "Using API key authentication"; \
+		./$(BUILD_DIR)/$(BINARY_NAME) --api-key=${TERRAMATE_API_KEY} --region=${TERRAMATE_REGION}; \
+	else \
+		echo "Using JWT authentication from credential file"; \
+		./$(BUILD_DIR)/$(BINARY_NAME) --region=${TERRAMATE_REGION}; \
+	fi
 
-dev: build/dev ## Build and run in development mode
+dev: build/dev ## Build and run in development mode (supports JWT or API key auth)
 	@echo "Starting MCP server (development mode)..."
-	./$(BUILD_DIR)/$(BINARY_NAME) --api-key=${TERRAMATE_API_KEY} --region=${TERRAMATE_REGION}
+	@if [ -n "${TERRAMATE_API_KEY}" ]; then \
+		echo "Using API key authentication"; \
+		./$(BUILD_DIR)/$(BINARY_NAME) --api-key=${TERRAMATE_API_KEY} --region=${TERRAMATE_REGION}; \
+	else \
+		echo "Using JWT authentication from credential file"; \
+		./$(BUILD_DIR)/$(BINARY_NAME) --region=${TERRAMATE_REGION}; \
+	fi
 
-docker/run: docker/build ## Build and run Docker container
+docker/run: docker/build ## Build and run Docker container (supports JWT or API key auth)
 	@echo "Starting MCP server in Docker..."
-	docker run --rm -it \
-		-e TERRAMATE_API_KEY=${TERRAMATE_API_KEY} \
-		-e TERRAMATE_REGION=${TERRAMATE_REGION} \
-		$(DOCKER_IMAGE):latest
+	@if [ -n "${TERRAMATE_API_KEY}" ]; then \
+		echo "Using API key authentication"; \
+		docker run --rm -it \
+			-e TERRAMATE_API_KEY=${TERRAMATE_API_KEY} \
+			-e TERRAMATE_REGION=${TERRAMATE_REGION} \
+			$(DOCKER_IMAGE):latest; \
+	else \
+		echo "Using JWT authentication (mounting credential directory)"; \
+		docker run --rm -it \
+			-v ${HOME}/.terramate.d:/root/.terramate.d:ro \
+			-e TERRAMATE_REGION=${TERRAMATE_REGION} \
+			$(DOCKER_IMAGE):latest; \
+	fi
 
 docker/push: docker/build ## Push Docker image to registry
 	@echo "Pushing Docker image $(DOCKER_IMAGE):$(VERSION)..."

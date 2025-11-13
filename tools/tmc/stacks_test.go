@@ -54,7 +54,7 @@ func TestListStacks_Success(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	c, err := terramate.NewClient("key", terramate.WithBaseURL(ts.URL))
+	c, err := terramate.NewClientWithAPIKey("key", terramate.WithBaseURL(ts.URL))
 	if err != nil {
 		t.Fatalf("NewClient error: %v", err)
 	}
@@ -119,7 +119,7 @@ func TestListStacks_WithFilters(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	c, err := terramate.NewClient("key", terramate.WithBaseURL(ts.URL))
+	c, err := terramate.NewClientWithAPIKey("key", terramate.WithBaseURL(ts.URL))
 	if err != nil {
 		t.Fatalf("NewClient error: %v", err)
 	}
@@ -149,7 +149,7 @@ func TestListStacks_WithFilters(t *testing.T) {
 }
 
 func TestListStacks_MissingOrgUUID(t *testing.T) {
-	c, err := terramate.NewClient("key")
+	c, err := terramate.NewClientWithAPIKey("key")
 	if err != nil {
 		t.Fatalf("NewClient error: %v", err)
 	}
@@ -189,7 +189,7 @@ func TestListStacks_WithDraftFilter(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	c, err := terramate.NewClient("key", terramate.WithBaseURL(ts.URL))
+	c, err := terramate.NewClientWithAPIKey("key", terramate.WithBaseURL(ts.URL))
 	if err != nil {
 		t.Fatalf("NewClient error: %v", err)
 	}
@@ -216,7 +216,7 @@ func TestListStacks_WithDraftFilter(t *testing.T) {
 }
 
 func TestListStacks_InvalidPerPage(t *testing.T) {
-	c, err := terramate.NewClient("key")
+	c, err := terramate.NewClientWithAPIKey("key")
 	if err != nil {
 		t.Fatalf("NewClient error: %v", err)
 	}
@@ -255,7 +255,7 @@ func TestListStacks_Unauthorized(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	c, err := terramate.NewClient("key", terramate.WithBaseURL(ts.URL))
+	c, err := terramate.NewClientWithAPIKey("key", terramate.WithBaseURL(ts.URL))
 	if err != nil {
 		t.Fatalf("NewClient error: %v", err)
 	}
@@ -323,7 +323,7 @@ func TestGetStack_Success(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	c, err := terramate.NewClient("key", terramate.WithBaseURL(ts.URL))
+	c, err := terramate.NewClientWithAPIKey("key", terramate.WithBaseURL(ts.URL))
 	if err != nil {
 		t.Fatalf("NewClient error: %v", err)
 	}
@@ -367,7 +367,7 @@ func TestGetStack_Success(t *testing.T) {
 }
 
 func TestGetStack_MissingOrgUUID(t *testing.T) {
-	c, err := terramate.NewClient("key")
+	c, err := terramate.NewClientWithAPIKey("key")
 	if err != nil {
 		t.Fatalf("NewClient error: %v", err)
 	}
@@ -396,7 +396,7 @@ func TestGetStack_MissingOrgUUID(t *testing.T) {
 }
 
 func TestGetStack_MissingStackID(t *testing.T) {
-	c, err := terramate.NewClient("key")
+	c, err := terramate.NewClientWithAPIKey("key")
 	if err != nil {
 		t.Fatalf("NewClient error: %v", err)
 	}
@@ -425,7 +425,7 @@ func TestGetStack_MissingStackID(t *testing.T) {
 }
 
 func TestGetStack_InvalidStackID(t *testing.T) {
-	c, err := terramate.NewClient("key")
+	c, err := terramate.NewClientWithAPIKey("key")
 	if err != nil {
 		t.Fatalf("NewClient error: %v", err)
 	}
@@ -464,7 +464,7 @@ func TestGetStack_NotFound(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	c, err := terramate.NewClient("key", terramate.WithBaseURL(ts.URL))
+	c, err := terramate.NewClientWithAPIKey("key", terramate.WithBaseURL(ts.URL))
 	if err != nil {
 		t.Fatalf("NewClient error: %v", err)
 	}
@@ -503,7 +503,7 @@ func TestGetStack_Unauthorized(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	c, err := terramate.NewClient("key", terramate.WithBaseURL(ts.URL))
+	c, err := terramate.NewClientWithAPIKey("key", terramate.WithBaseURL(ts.URL))
 	if err != nil {
 		t.Fatalf("NewClient error: %v", err)
 	}

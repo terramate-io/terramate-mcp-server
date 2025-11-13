@@ -21,9 +21,10 @@ type Server struct {
 
 // Config holds server configuration values required to initialize dependencies.
 type Config struct {
-	APIKey  string
-	Region  string
-	BaseURL string
+	APIKey         string
+	CredentialFile string
+	Region         string
+	BaseURL        string
 }
 
 // newServer creates a new server instance
@@ -32,14 +33,40 @@ func newServer(config *Config) (*Server, error) {
 		return nil, fmt.Errorf("config is required")
 	}
 
-	// Create Terramate Cloud API client
+	// Load credential (precedence: API Key > JWT from file)
+	var credential terramate.Credential
+	var err error
+
+	// Check API key first (backward compatibility)
+	if config.APIKey != "" {
+		credential = terramate.NewAPIKeyCredential(config.APIKey)
+	} else {
+		// Load JWT from credential file
+		credPath := config.CredentialFile
+		if credPath == "" {
+			// Use default path
+			credPath, err = terramate.GetDefaultCredentialPath()
+			if err != nil {
+				return nil, fmt.Errorf("failed to determine default credential path: %w", err)
+			}
+		}
+
+		credential, err = terramate.LoadJWTFromFile(credPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load credentials: %w", err)
+		}
+		log.Printf("Using JWT authentication (provider: %s)", credential.Name())
+	}
+
+	// Create Terramate Cloud API client with credential
 	var opts []terramate.ClientOption
 	if config.BaseURL == "" || config.BaseURL == "https://api.terramate.io" {
 		opts = append(opts, terramate.WithRegion(config.Region))
 	} else {
 		opts = append(opts, terramate.WithBaseURL(config.BaseURL))
 	}
-	tmcClient, err := terramate.NewClient(config.APIKey, opts...)
+
+	tmcClient, err := terramate.NewClient(credential, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Terramate client: %w", err)
 	}

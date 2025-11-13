@@ -59,7 +59,7 @@ func TestPreviewsGet_ParsesResponse(t *testing.T) {
 }
 
 func TestPreviewsGet_Validation(t *testing.T) {
-	c, err := NewClient("key")
+	c, err := NewClientWithAPIKey("key")
 	if err != nil {
 		t.Fatalf("NewClient error: %v", err)
 	}
@@ -244,7 +244,7 @@ func TestPreviewsExplainErrors_WithForce(t *testing.T) {
 }
 
 func TestPreviewsGetLogs_Validation(t *testing.T) {
-	c, err := NewClient("key")
+	c, err := NewClientWithAPIKey("key")
 	if err != nil {
 		t.Fatalf("NewClient error: %v", err)
 	}

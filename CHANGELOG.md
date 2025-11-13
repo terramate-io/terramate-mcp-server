@@ -8,16 +8,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Add JWT token authentication support for user-level credentials
+- Add `--credential-file` flag to specify custom JWT credential file location
+- Add `LoadJWTFromFile()` function to load credentials from `~/.terramate.d/credentials.tmrc.json`
+- Add `Credential` interface for authentication abstraction
+- Add `JWTCredential` implementation with automatic expiration checking
+- Add `NewClientWithJWT()` convenience constructor for JWT-based authentication
+- Add `NewClientWithAPIKey()` convenience constructor for API key authentication
+- Add comprehensive test coverage for JWT authentication flows
+- Add integration tests for MCP server with JWT credentials
+- Add auto-refresh pattern for JWT tokens in AI assistant configurations (runs `terramate cloud info` before starting server)
 
 ### Changed
-
-### Deprecated
-
-### Removed
-
-### Fixed
+- Change `NewClient()` to accept `Credential` interface instead of raw API key string
+- Change MCP server to auto-load JWT credentials from default location when no API key provided
+- Update all tests to use new `NewClientWithAPIKey()` constructor
+- Update Makefile `run`, `dev`, and `docker/run` targets to support both JWT and API key authentication
+- Update Dockerfile with documentation for both authentication methods
 
 ### Security
+- Add automatic JWT token expiration validation before each API request
+- Add helpful error messages guiding users to refresh expired credentials
 
 ## [0.0.1] - 2025-11-01
 

@@ -112,7 +112,7 @@ func TestDeploymentsList_WithOptions(t *testing.T) {
 }
 
 func TestDeploymentsList_Validation(t *testing.T) {
-	c, err := NewClient("key")
+	c, err := NewClientWithAPIKey("key")
 	if err != nil {
 		t.Fatalf("NewClient error: %v", err)
 	}
@@ -185,7 +185,7 @@ func TestDeploymentsGetWorkflow_ParsesResponse(t *testing.T) {
 }
 
 func TestDeploymentsGetWorkflow_Validation(t *testing.T) {
-	c, err := NewClient("key")
+	c, err := NewClientWithAPIKey("key")
 	if err != nil {
 		t.Fatalf("NewClient error: %v", err)
 	}
@@ -312,7 +312,7 @@ func TestDeploymentsGetStackDeployment_ParsesResponse(t *testing.T) {
 }
 
 func TestDeploymentsGetStackDeployment_Validation(t *testing.T) {
-	c, err := NewClient("key")
+	c, err := NewClientWithAPIKey("key")
 	if err != nil {
 		t.Fatalf("NewClient error: %v", err)
 	}
