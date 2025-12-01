@@ -1,6 +1,7 @@
 package terramate
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -16,6 +17,15 @@ import (
 
 const (
 	defaultTimeout = 30 * time.Second
+)
+
+// contextKey is a type for context keys to avoid collisions
+type contextKey string
+
+const (
+	// retryCountKey is used to track the number of 401 retries in a request chain
+	retryCountKey contextKey = "retry_count"
+	maxRetries    int        = 1 // Maximum number of 401 retries per request
 )
 
 // Client is the main Terramate Cloud API client
@@ -171,7 +181,37 @@ func (c *Client) newRequest(ctx context.Context, method, path string, body io.Re
 		return nil, fmt.Errorf("failed to parse URL path: %w", err)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, method, u.String(), body)
+	// Ensure GetBody is set for all body types to support request cloning/retry.
+	// Go's http package only sets GetBody automatically for certain types like
+	// *bytes.Buffer, *bytes.Reader, *strings.Reader. For custom io.Reader types,
+	// we need to read the body into a buffer to enable cloning.
+	var bodyReader io.Reader = body
+	if body != nil {
+		// Check if body is a type that Go's http package recognizes and sets GetBody for.
+		// Known types: *bytes.Buffer, *bytes.Reader, *strings.Reader
+		// For any other type, we buffer it to ensure GetBody is set.
+		switch body.(type) {
+		case *bytes.Buffer, *bytes.Reader:
+			// These types automatically get GetBody set by Go's http package
+			bodyReader = body
+		default:
+			// Check for *strings.Reader (can't include in switch due to package visibility)
+			// For *strings.Reader and other custom io.Reader types, buffer to enable cloning
+			if _, ok := body.(*strings.Reader); ok {
+				// *strings.Reader also gets GetBody set automatically, use as-is
+				bodyReader = body
+			} else {
+				// For custom io.Reader types, read into buffer to enable cloning
+				bodyBytes, readErr := io.ReadAll(body)
+				if readErr != nil {
+					return nil, fmt.Errorf("failed to read request body: %w", readErr)
+				}
+				bodyReader = bytes.NewReader(bodyBytes)
+			}
+		}
+	}
+
+	req, err := http.NewRequestWithContext(ctx, method, u.String(), bodyReader)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -210,16 +250,29 @@ func (c *Client) do(req *http.Request, v interface{}) (*Response, error) {
 
 	// Handle 401 Unauthorized - attempt token refresh if using JWT
 	if resp.StatusCode == http.StatusUnauthorized {
-		if jwtCred, ok := c.credential.(*JWTCredential); ok {
+		if refreshableCred, ok := c.credential.(RefreshableCredential); ok {
+			// Check retry count to prevent unbounded recursion
+			retryCount := 0
+			if count, ok := req.Context().Value(retryCountKey).(int); ok {
+				retryCount = count
+			}
+			if retryCount >= maxRetries {
+				// Already retried once, don't retry again
+				return response, parseAPIError(resp, body)
+			}
+
 			// Try to refresh the token
-			if refreshErr := jwtCred.Refresh(req.Context()); refreshErr == nil {
+			if refreshErr := refreshableCred.Refresh(req.Context()); refreshErr == nil {
 				// Token refreshed successfully - retry the request
 				// Clone the request to avoid reusing the body
 				retryReq, cloneErr := cloneRequest(req)
 				if cloneErr == nil {
 					// Apply the new credentials
 					if applyErr := c.credential.ApplyCredentials(retryReq); applyErr == nil {
-						// Recursively call do() for the retry (will not recurse again due to refreshing flag)
+						// Increment retry count in context to prevent infinite recursion
+						retryCtx := context.WithValue(retryReq.Context(), retryCountKey, retryCount+1)
+						retryReq = retryReq.WithContext(retryCtx)
+						// Recursively call do() for the retry (will not recurse again due to retry count check)
 						return c.do(retryReq, v)
 					}
 				}
@@ -250,12 +303,20 @@ func cloneRequest(req *http.Request) (*http.Request, error) {
 	clonedReq := req.Clone(req.Context())
 
 	// If the request had a body, we need to handle it specially
-	if req.Body != nil && req.GetBody != nil {
-		body, err := req.GetBody()
-		if err != nil {
-			return nil, fmt.Errorf("failed to get request body: %w", err)
+	if req.Body != nil {
+		if req.GetBody != nil {
+			// Use GetBody to get a fresh copy of the body
+			body, err := req.GetBody()
+			if err != nil {
+				return nil, fmt.Errorf("failed to get request body: %w", err)
+			}
+			clonedReq.Body = body
+		} else {
+			// GetBody is nil - this should not happen if newRequest is working correctly,
+			// but handle it defensively to prevent silent failures.
+			// The body has already been consumed by the first request, so we cannot clone it.
+			return nil, fmt.Errorf("cannot clone request: body GetBody is nil (body may have been consumed)")
 		}
-		clonedReq.Body = body
 	}
 
 	return clonedReq, nil
@@ -309,11 +370,21 @@ func sleepOrCtxDone(ctx context.Context, d time.Duration) bool {
 }
 
 func parseAPIError(resp *http.Response, body []byte) error {
-	apiErr := &APIError{StatusCode: resp.StatusCode, Message: string(body)}
+	// Default to generic error message to avoid leaking sensitive data
+	apiErr := &APIError{
+		StatusCode: resp.StatusCode,
+		Message:    fmt.Sprintf("API request failed with status %d", resp.StatusCode),
+	}
+
+	// Try to parse JSON error response safely
 	if isJSONContentType(resp.Header.Get("Content-Type")) {
 		var errResp ErrorResponse
 		if err := json.Unmarshal(body, &errResp); err == nil {
+			// Only use parsed error fields, never raw body
 			apiErr.Message = errResp.Error
+			if apiErr.Message == "" {
+				apiErr.Message = fmt.Sprintf("API request failed with status %d", resp.StatusCode)
+			}
 			apiErr.Details = errResp.Details
 		}
 	}

@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Add automatic JWT token refresh when API returns 401 Unauthorized
+- Add file watching to automatically reload credentials when Terramate CLI updates them
+- Add thread-safe credential management with mutex protection
+- Add `StartWatching()` and `StopWatching()` methods for credential file monitoring
+- Add comprehensive test suite for token refresh and file watching functionality
+
+### Changed
+- JWT credentials now automatically refresh expired tokens without user intervention
+- MCP server and Terramate CLI can now safely share and update the same credential file
+- Credential file updates are atomic to prevent corruption during concurrent access
+
+### Fixed
+- Fix US region endpoint from `api.us.terramate.io` to `us.api.terramate.io`
+
 ## [0.0.2] - 2025-11-13
 
 ### Added
