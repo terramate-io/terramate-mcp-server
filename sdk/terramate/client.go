@@ -129,7 +129,7 @@ func WithRegion(region string) ClientOption {
 		var base string
 		switch region {
 		case "us":
-			base = "https://api.us.terramate.io"
+			base = "https://us.api.terramate.io"
 		case "eu":
 			base = "https://api.terramate.io"
 		default:
@@ -190,7 +190,9 @@ func (c *Client) newRequest(ctx context.Context, method, path string, body io.Re
 	return req, nil
 }
 
-// do executes an HTTP request and handles the response
+// do executes an HTTP request and handles the response.
+// If the request fails with 401 Unauthorized and the client uses JWT authentication,
+// it attempts to refresh the token and retry the request once.
 func (c *Client) do(req *http.Request, v interface{}) (*Response, error) {
 	const maxBodyBytes = 10 << 20 // 10 MiB
 	resp, err := c.executeRequestWithRetries(req, 3)
@@ -205,6 +207,25 @@ func (c *Client) do(req *http.Request, v interface{}) (*Response, error) {
 	}
 
 	response := &Response{HTTPResponse: resp, Body: body}
+
+	// Handle 401 Unauthorized - attempt token refresh if using JWT
+	if resp.StatusCode == http.StatusUnauthorized {
+		if jwtCred, ok := c.credential.(*JWTCredential); ok {
+			// Try to refresh the token
+			if refreshErr := jwtCred.Refresh(req.Context()); refreshErr == nil {
+				// Token refreshed successfully - retry the request
+				// Clone the request to avoid reusing the body
+				retryReq, cloneErr := cloneRequest(req)
+				if cloneErr == nil {
+					// Apply the new credentials
+					if applyErr := c.credential.ApplyCredentials(retryReq); applyErr == nil {
+						// Recursively call do() for the retry (will not recurse again due to refreshing flag)
+						return c.do(retryReq, v)
+					}
+				}
+			}
+		}
+	}
 
 	if resp.StatusCode >= 400 {
 		return response, parseAPIError(resp, body)
@@ -221,6 +242,23 @@ func (c *Client) do(req *http.Request, v interface{}) (*Response, error) {
 	}
 
 	return response, nil
+}
+
+// cloneRequest creates a clone of an HTTP request for retry purposes.
+// This is necessary because http.Request.Body can only be read once.
+func cloneRequest(req *http.Request) (*http.Request, error) {
+	clonedReq := req.Clone(req.Context())
+
+	// If the request had a body, we need to handle it specially
+	if req.Body != nil && req.GetBody != nil {
+		body, err := req.GetBody()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get request body: %w", err)
+		}
+		clonedReq.Body = body
+	}
+
+	return clonedReq, nil
 }
 
 func (c *Client) executeRequestWithRetries(req *http.Request, maxRetries int) (*http.Response, error) {
