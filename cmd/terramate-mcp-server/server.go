@@ -17,6 +17,7 @@ type Server struct {
 	mcp          *server.MCPServer
 	toolHandlers *tools.ToolHandlers
 	config       *Config
+	jwtCred      *terramate.JWTCredential // Store JWT credential for cleanup
 }
 
 // Config holds server configuration values required to initialize dependencies.
@@ -80,6 +81,11 @@ func newServer(config *Config) (*Server, error) {
 		config:       config,
 	}
 
+	// Store JWT credential if we're using it
+	if jwtCred, ok := credential.(*terramate.JWTCredential); ok {
+		s.jwtCred = jwtCred
+	}
+
 	// Create MCP server
 	s.mcp = server.NewMCPServer(
 		"terramate-mcp-server",
@@ -102,6 +108,16 @@ func newServer(config *Config) (*Server, error) {
 func (s *Server) start(ctx context.Context) error {
 	log.Printf("Starting Terramate MCP server in stdio mode")
 
+	// Start file watching if using JWT credentials
+	if s.jwtCred != nil {
+		if err := s.jwtCred.StartWatching(ctx); err != nil {
+			log.Printf("Warning: failed to start credential file watching: %v", err)
+			log.Printf("Automatic token reload from CLI updates will not be available")
+		} else {
+			log.Printf("Started watching credential file for automatic token reload")
+		}
+	}
+
 	// Start server in a goroutine so we can handle context cancellation
 	errChan := make(chan error, 1)
 	go func() {
@@ -119,7 +135,13 @@ func (s *Server) start(ctx context.Context) error {
 }
 
 // stop gracefully shuts down the server
-func (s *Server) stop(ctx context.Context) {
+func (s *Server) stop(_ context.Context) {
+	// Stop file watching if active
+	if s.jwtCred != nil {
+		s.jwtCred.StopWatching()
+		log.Println("Stopped credential file watching")
+	}
+
 	log.Println("Terramate MCP server stopped")
 }
 

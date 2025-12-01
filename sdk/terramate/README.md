@@ -7,10 +7,11 @@ A production-ready Go SDK for interacting with the [Terramate Cloud API](https:/
 
 ## Features
 
-- 🔐 **Flexible Authentication** - JWT token (recommended) or API key authentication with automatic retry logic
+- 🔐 **Flexible Authentication** - JWT token (recommended) or API key authentication
+- 🔄 **Automatic Token Refresh** - JWT tokens refresh automatically on expiration with file watching
 - 🌍 **Multi-Region Support** - EU and US region endpoints
 - 📦 **Complete API Coverage** - Stacks, Drifts, Deployments, Review Requests, and Memberships
-- 🔄 **Automatic Retries** - Built-in exponential backoff for transient failures
+- 🔁 **Automatic Retries** - Built-in exponential backoff for transient failures
 - ⏱️ **Context Support** - Cancellation and timeout handling
 - 🧪 **Well Tested** - 79%+ test coverage with 160+ tests
 - 📝 **Type Safe** - Full Go type definitions for all API resources
@@ -38,6 +39,7 @@ import (
 
 func main() {
     // Load JWT credentials from ~/.terramate.d/credentials.tmrc.json
+    // Tokens automatically refresh when expired - zero maintenance!
     credPath, _ := terramate.GetDefaultCredentialPath()
     credential, err := terramate.LoadJWTFromFile(credPath)
     if err != nil {
@@ -108,6 +110,13 @@ credential, err := terramate.LoadJWTFromFile("/path/to/credentials.tmrc.json")
 client, err := terramate.NewClient(credential, terramate.WithRegion("eu"))
 ```
 
+**Why JWT is Preferred:**
+- ✅ **Self-service** - Users authenticate via `terramate cloud login` without admin intervention
+- ✅ **Automatic refresh** - Tokens refresh transparently when expired (see [Automatic Token Refresh](#automatic-token-refresh))
+- ✅ **User-level permissions** - Actions tracked per user for audit trails
+- ✅ **Multiple providers** - Google, GitHub, GitLab, SSO support
+- ✅ **Zero maintenance** - Set up once, works forever
+
 **API Key (requires admin privileges):**
 ```go
 // Basic client with API key
@@ -119,6 +128,8 @@ client, err := terramate.NewClientWithAPIKey(
     terramate.WithRegion("us"),  // or "eu"
 )
 ```
+
+⚠️ **Note:** Organization API keys can only be created by organization administrators, making JWT authentication the preferred method for individual developers.
 
 ### Client Options
 
@@ -144,6 +155,69 @@ client, err := terramate.NewClient(credential,
 
 - **EU**: `https://api.terramate.io` (default)
 - **US**: `https://api.us.terramate.io`
+
+### Automatic Token Refresh
+
+The SDK implements a **hybrid approach** for seamless JWT token management:
+
+**How It Works:**
+1. **Reactive Refresh** - When API returns 401 Unauthorized, the SDK automatically refreshes the token and retries the request
+2. **File Watching** - The SDK watches `~/.terramate.d/credentials.tmrc.json` for external updates by the Terramate CLI
+3. **Shared Credentials** - Both the SDK and Terramate CLI safely share the same credential file
+4. **Atomic Updates** - File updates use atomic operations to prevent race conditions
+
+**User Experience:**
+```go
+// Initial setup (one time only)
+// Run: terramate cloud login
+
+// Create client
+credential, _ := terramate.LoadJWTFromFile(credPath)
+client, _ := terramate.NewClient(credential, terramate.WithRegion("eu"))
+
+// Use for hours, days, weeks...
+stacks, _, _ := client.Stacks.List(ctx, orgUUID, nil)
+// ✅ Token automatically refreshes when expired
+// ✅ No manual intervention needed
+// ✅ Transparent to your application
+```
+
+**Architecture:**
+```
+┌─────────────────┐         ┌──────────────────┐
+│ Terramate CLI   │◄───────►│ Credential File  │
+│ (Token Manager) │  writes │ (Shared State)   │
+└─────────────────┘         └──────────────────┘
+                                      ▲
+                                      │ watches
+                                      │ & reads
+                                      ▼
+                            ┌──────────────────┐
+                            │   SDK Client     │
+                            │ (Auto-Refresh)   │
+                            └──────────────────┘
+```
+
+**Security:**
+- ✅ Refresh tokens stored with 0600 permissions
+- ✅ All API calls over HTTPS
+- ✅ No tokens in logs or error messages
+- ✅ Thread-safe concurrent access
+- ✅ Standard OAuth 2.0 refresh pattern
+
+**File Watching (Optional):**
+```go
+// Start watching for external token updates (optional but recommended)
+credential.StartWatching()
+defer credential.StopWatching()
+
+// The SDK automatically reloads tokens when:
+// - Terramate CLI runs `terramate cloud login`
+// - Terramate CLI refreshes an expired token
+// - Any external process updates the credential file
+```
+
+**Note:** File watching is optional. The SDK will still automatically refresh tokens on 401 errors even without watching enabled.
 
 ## API Services
 
