@@ -231,7 +231,7 @@ When creating a release:
 - **User-level permissions**: Actions are tracked per user for better audit trails
 - **Self-service**: No need to request API keys from organization admins
 - **Multiple providers**: Google, GitHub, GitLab, SSO support
-- **Automatic management**: Terramate CLI handles token lifecycle
+- **Automatic token refresh**: Tokens refresh transparently when expired - zero maintenance
 
 **Organization API Keys Require Admin:**
 Organization API keys can only be created and managed by organization administrators in Terramate Cloud. This makes JWT authentication the preferred method for individual developers.
@@ -300,17 +300,26 @@ type Credential interface {
 
 **Implementation Details:**
 - JWT tokens are parsed ONLY to extract provider information (for display purposes)
-- No client-side expiration checking - the API server is the source of truth for token validity
-- When API returns 401 Unauthorized, users receive helpful error message with guidance
+- **Automatic token refresh**: When API returns 401 Unauthorized, the server automatically refreshes the token
+- **File watching**: The server watches the credential file and reloads tokens when Terramate CLI updates them
+- **Thread-safe**: All credential operations use mutex protection for concurrent access
+- **Atomic file updates**: Credential file updates are atomic to prevent corruption
 - Uses `Authorization: Bearer <token>` header
-- No automatic refresh in MCP server (users must re-run `terramate cloud login`)
+- **Zero maintenance**: No manual token refresh or server restarts needed
+
+**Automatic Token Refresh:**
+The MCP server implements a hybrid approach for seamless token management:
+1. **Reactive Refresh**: When API returns 401, server refreshes token and retries request
+2. **File Watching**: Server watches `~/.terramate.d/credentials.tmrc.json` for external updates
+3. **Shared Credentials**: Both MCP server and Terramate CLI safely share the same credential file
+4. **Atomic Updates**: File updates use atomic operations to prevent race conditions
 
 **Security Note:**
 The client does NOT validate JWT expiration locally. This is intentional and follows security best practices:
 - Client-side parsing uses `ParseUnverified()` which doesn't verify signatures
 - Making security decisions based on unverified data would be unsafe
 - The API server is the authoritative source for token validation
-- 401 errors from API provide clear guidance to users to refresh credentials
+- 401 errors trigger automatic token refresh - transparent to users
 
 ### API Key Authentication (issuing an organization API key requires admin privileges)
 
@@ -365,11 +374,12 @@ func (s *Service) SomeMethod(ctx context.Context, ...) error {
 **Do NOT:**
 - Manually set Authorization headers
 - Assume API key is always available
-- Skip expiration checks
+- Perform client-side JWT validation or expiration checking
 
 **DO:**
 - Let the credential interface handle authentication
 - Trust the client's newRequest() method
+- Let the API server validate credentials (it's the source of truth)
 - Write tests for both JWT and API key scenarios
 
 ## Security & Configuration Tips
@@ -401,7 +411,142 @@ func (s *Service) SomeMethod(ctx context.Context, ...) error {
 - The SDK will refuse to load credential files with insecure permissions
 - Never commit credential files to git
 - `.terramate.d/` should be in `.gitignore`
-- MCP server reads credentials on startup only (not monitored for changes)
+- MCP server watches the credential file for changes and automatically reloads tokens
+
+## Security Best Practices
+
+### 🔒 Preventing Token Leakage
+
+**CRITICAL: Never expose tokens, API keys, or credentials in:**
+- Error messages
+- Log messages
+- Debug output
+- HTTP response bodies in error messages
+- Stack traces
+- Test output (unless sanitized)
+
+**When handling errors:**
+```go
+// ❌ BAD: Leaks token in error message
+return fmt.Errorf("refresh failed: %s", string(responseBody))
+
+// ✅ GOOD: Parse JSON safely, extract only safe fields
+var errResp struct {
+    Error string `json:"error"`
+}
+if err := json.Unmarshal(body, &errResp); err == nil {
+    return fmt.Errorf("refresh failed: %s", errResp.Error)
+}
+return fmt.Errorf("refresh failed (status %d)", statusCode)
+```
+
+**When logging:**
+```go
+// ❌ BAD: Logs token value
+log.Printf("Token: %s", token)
+
+// ✅ GOOD: Generic log message
+log.Printf("JWT token refreshed successfully")
+
+// ✅ GOOD: Log error without token
+log.Printf("Warning: failed to reload credential: %v", err)
+```
+
+**When handling HTTP responses:**
+```go
+// ❌ BAD: Includes raw body in error (may contain tokens)
+apiErr := &APIError{Message: string(body)}
+
+// ✅ GOOD: Parse JSON safely, extract only error fields
+apiErr := &APIError{Message: "API request failed"}
+if isJSONContentType(resp.Header.Get("Content-Type")) {
+    var errResp ErrorResponse
+    if err := json.Unmarshal(body, &errResp); err == nil {
+        apiErr.Message = errResp.Error // Only safe parsed field
+    }
+}
+```
+
+### Security Checklist for New Code
+
+When adding or modifying code that handles credentials:
+
+- [ ] **Error Messages**: Never include tokens, API keys, or raw HTTP response bodies
+- [ ] **Logging**: Use generic messages, never log credential values
+- [ ] **JSON Parsing**: Parse error responses safely, extract only known safe fields
+- [ ] **HTTP Bodies**: Never convert response bodies to strings for error messages without parsing
+- [ ] **Test Output**: In tests, only log token prefixes (e.g., `token[:20]+"..."`) if needed
+- [ ] **File Permissions**: Always validate credential file permissions (`0600`)
+- [ ] **Thread Safety**: Use mutexes for concurrent credential access
+- [ ] **Input Validation**: Validate all inputs before processing
+- [ ] **HTTPS Only**: Never use HTTP for credential transmission
+- [ ] **Context Timeouts**: Use context timeouts for all network operations
+
+### Common Security Anti-Patterns to Avoid
+
+**1. Token Leakage in Errors:**
+```go
+// ❌ BAD
+return fmt.Errorf("failed: %s", string(httpResponseBody))
+
+// ✅ GOOD
+return fmt.Errorf("failed: %s", parseSafeError(httpResponseBody))
+```
+
+**2. Logging Credentials:**
+```go
+// ❌ BAD
+log.Printf("Using token: %s", token)
+
+// ✅ GOOD
+log.Printf("Using JWT authentication")
+```
+
+**3. Including Raw Bodies:**
+```go
+// ❌ BAD
+err := fmt.Errorf("API error: %s", string(body))
+
+// ✅ GOOD
+err := parseAPIError(resp, body) // Safely parses JSON
+```
+
+**4. Debug Output:**
+```go
+// ❌ BAD
+fmt.Printf("Token: %v\n", credential)
+
+// ✅ GOOD
+fmt.Printf("Credential type: %s\n", credential.Name())
+```
+
+### Security Review Process
+
+Before committing code that handles credentials:
+
+1. **Search for token leakage:**
+   ```bash
+   grep -r "fmt.*token\|log.*token\|string(body)" --include="*.go"
+   ```
+
+2. **Verify error handling:**
+   - Check all `fmt.Errorf()` calls with `%s` or `%v` formatting
+   - Ensure HTTP response bodies are parsed, not converted to strings
+   - Verify error messages don't include credential values
+
+3. **Check logging:**
+   - Search for `log.Printf` or `log.Println` with credential variables
+   - Ensure all log messages are generic
+
+4. **Test security:**
+   - Run tests and verify no tokens appear in output
+   - Check error messages don't expose sensitive data
+   - Verify file permissions are enforced
+
+5. **Review HTTP handling:**
+   - Ensure all API calls use HTTPS
+   - Verify response bodies are parsed safely
+   - Check error handling doesn't leak response bodies
 
 ## SDK Development
 
