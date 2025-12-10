@@ -55,7 +55,7 @@ func TestWithRegion_SetsExpectedBaseURL(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewClient error: %v", err)
 	}
-	if got := cUS.baseURL.String(); got != "https://api.us.terramate.io" {
+	if got := cUS.baseURL.String(); got != "https://us.api.terramate.io" {
 		t.Fatalf("us baseURL: %s", got)
 	}
 }

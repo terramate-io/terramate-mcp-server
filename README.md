@@ -105,7 +105,7 @@ JWT tokens provide user-level authentication using your Terramate Cloud credenti
 - ✅ **No admin required**: Unlike organization API keys which require admin privileges to create
 - ✅ **User-level permissions**: Actions are tracked per user for better audit trails
 - ✅ **Multiple providers**: Google, GitHub, GitLab, SSO support
-- ✅ **Automatic token management**: Terramate CLI handles token lifecycle
+- ✅ **Automatic token refresh**: Tokens refresh transparently when expired - zero maintenance
 - ✅ **No manual credential management**: Simple `terramate cloud login` command
 
 **Benefits:**
@@ -144,7 +144,20 @@ JWT tokens provide user-level authentication using your Terramate Cloud credenti
 - SSO
 
 **Token Expiration:**
-JWT tokens typically expire after 1 hour. When expired, run `terramate cloud login` to refresh and restart the MCP server.
+JWT tokens typically expire after 1 hour. The MCP server handles this automatically:
+- **Automatic Refresh**: When a token expires, the server automatically refreshes it using the refresh token
+- **File Watching**: The server watches the credential file and automatically reloads tokens when the Terramate CLI updates them
+- **Zero Downtime**: Token refresh happens transparently - no need to restart the server
+- **Shared Credentials**: Both MCP server and Terramate CLI can safely use and update the same credential file
+
+**How it works:**
+1. Initial setup: Run `terramate cloud login` once
+2. MCP server starts and loads the JWT token
+3. Server automatically watches the credential file for changes
+4. When you use Terramate CLI, it may refresh the token
+5. MCP server detects the file change and reloads the new token
+6. If MCP server gets a 401 error, it refreshes the token itself
+7. Everything happens automatically - zero maintenance!
 
 ### API Key Authentication
 
@@ -277,9 +290,9 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 }
 ```
 
-**Option 2: With Auto-Refresh (Recommended)**
+**Option 2: With Pre-Start Refresh (Recommended for reliability)**
 
-Automatically refreshes token on startup:
+Ensures token is fresh before server starts:
 
 ```json
 {
@@ -295,7 +308,7 @@ Automatically refreshes token on startup:
 }
 ```
 
-**Note:** Claude Desktop runs in your user context, so it automatically has access to `~/.terramate.d/credentials.tmrc.json`. The auto-refresh command ensures your token is fresh on every startup.
+**Note:** Claude Desktop runs in your user context, so it automatically has access to `~/.terramate.d/credentials.tmrc.json`. The MCP server now includes automatic token refresh, so the pre-start command is optional but recommended for extra reliability.
 
 **With API Key:**
 
@@ -332,9 +345,9 @@ Add to your Cursor MCP settings:
 }
 ```
 
-**Option 2: Docker with Auto-Refresh (Recommended)**
+**Option 2: Docker with Pre-Start Refresh (Optional)**
 
-Automatically refreshes token on startup:
+Ensures token is fresh before server starts:
 
 ```json
 {
@@ -350,7 +363,7 @@ Automatically refreshes token on startup:
 }
 ```
 
-This runs `terramate cloud info` before starting the server, which automatically refreshes expired tokens using the refresh_token from your credential file.
+**Note:** The MCP server now includes automatic token refresh and file watching. The pre-start `terramate cloud info` command is optional but provides extra reliability by ensuring the token is fresh before the server starts.
 
 **With API Key (Legacy):**
 
@@ -1177,7 +1190,14 @@ The SDK provides type-safe Go clients for all Terramate Cloud APIs:
 ```go
 import "github.com/terramate-io/terramate-mcp-server/sdk/terramate"
 
-client, _ := terramate.NewClient("your-api-key", terramate.WithRegion("eu"))
+// With JWT (recommended)
+credPath, _ := terramate.GetDefaultCredentialPath()
+credential, _ := terramate.LoadJWTFromFile(credPath)
+client, _ := terramate.NewClient(credential, terramate.WithRegion("eu"))
+
+// Or with API key
+client, _ := terramate.NewClientWithAPIKey("your-api-key", terramate.WithRegion("eu"))
+
 stacks, _, _ := client.Stacks.List(ctx, orgUUID, nil)
 ```
 
