@@ -7,12 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.3] - 2025-12-11
+
 ### Added
 - Add automatic JWT token refresh when API returns 401 Unauthorized
 - Add file watching to automatically reload credentials when Terramate CLI updates them
 - Add thread-safe credential management with mutex protection
 - Add `StartWatching()` and `StopWatching()` methods for credential file monitoring
 - Add comprehensive test suite for token refresh and file watching functionality
+- Add test coverage for file watcher stop/restart scenarios
 
 ### Changed
 - JWT credentials now automatically refresh expired tokens without user intervention
@@ -21,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Fix US region endpoint from `api.us.terramate.io` to `us.api.terramate.io`
+- Fix potential race condition in `waitForRefresh` method for improved context cancellation handling
 
 ## [0.0.2] - 2025-11-13
 
@@ -82,7 +86,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Automated Docker image publishing to GitHub Container Registry
 - Documentation and usage examples
 
-[unreleased]: https://github.com/terramate-io/terramate-mcp-server/compare/v0.0.2...HEAD
+[unreleased]: https://github.com/terramate-io/terramate-mcp-server/compare/v0.0.3...HEAD
+[0.0.3]: https://github.com/terramate-io/terramate-mcp-server/compare/v0.0.2...v0.0.3
 [0.0.2]: https://github.com/terramate-io/terramate-mcp-server/compare/v0.0.1...v0.0.2
 [0.0.1]: https://github.com/terramate-io/terramate-mcp-server/releases/tag/v0.0.1
 
