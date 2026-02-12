@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Add stack resources support: `tmc_list_resources` and `tmc_get_resource` tools to list and get resources per stack with filtering by status, technology, provider, type, repository, target, stack_id, policy_severity, and search
+
 ## [0.0.3] - 2025-12-11
 
 ### Added

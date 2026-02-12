@@ -10,7 +10,7 @@ A production-ready Go SDK for interacting with the [Terramate Cloud API](https:/
 - 🔐 **Flexible Authentication** - JWT token (recommended) or API key authentication
 - 🔄 **Automatic Token Refresh** - JWT tokens refresh automatically on expiration with file watching
 - 🌍 **Multi-Region Support** - EU and US region endpoints
-- 📦 **Complete API Coverage** - Stacks, Drifts, Deployments, Review Requests, and Memberships
+- 📦 **Complete API Coverage** - Stacks, Drifts, Deployments, Review Requests, Previews, Resources, and Memberships
 - 🔁 **Automatic Retries** - Built-in exponential backoff for transient failures
 - ⏱️ **Context Support** - Cancellation and timeout handling
 - 🧪 **Well Tested** - 79%+ test coverage with 160+ tests
@@ -33,7 +33,7 @@ import (
     "context"
     "fmt"
     "log"
-    
+
     "github.com/terramate-io/terramate-mcp-server/sdk/terramate"
 )
 
@@ -45,24 +45,24 @@ func main() {
     if err != nil {
         log.Fatalf("Failed to load credentials: %v\nRun 'terramate cloud login' first", err)
     }
-    
+
     // Create client with JWT
     client, err := terramate.NewClient(credential,
         terramate.WithRegion("eu"))
     if err != nil {
         log.Fatal(err)
     }
-    
+
     ctx := context.Background()
-    
+
     // List organizations
     memberships, _, err := client.Memberships.List(ctx)
     if err != nil {
         log.Fatal(err)
     }
-    
+
     orgUUID := memberships[0].OrgUUID
-    
+
     // List drifted stacks
     stacks, _, err := client.Stacks.List(ctx, orgUUID, &terramate.StacksListOptions{
         DriftStatus: []string{"drifted"},
@@ -70,7 +70,7 @@ func main() {
     if err != nil {
         log.Fatal(err)
     }
-    
+
     fmt.Printf("Found %d drifted stacks\n", len(stacks.Stacks))
 }
 ```
@@ -308,11 +308,11 @@ details, _, err := client.ReviewRequests.Get(ctx, orgUUID, reviewRequestID, nil)
 for _, sp := range details.StackPreviews {
     fmt.Printf("Stack: %s\n", sp.Stack.Path)
     fmt.Printf("Status: %s\n", sp.Status)
-    
+
     if sp.ChangesetDetails != nil {
         fmt.Println(sp.ChangesetDetails.ChangesetASCII)  // Terraform plan
     }
-    
+
     // See change counts
     if sp.ResourceChanges != nil {
         fmt.Printf("Creates: %d, Updates: %d, Deletes: %d\n",
@@ -345,7 +345,7 @@ deployments, _, err := client.Deployments.List(ctx, orgUUID,
 
 for _, d := range deployments.Deployments {
     fmt.Printf("Deployment #%d: %s\n", d.ID, d.CommitTitle)
-    fmt.Printf("Status: %s (%d ok, %d failed)\n", 
+    fmt.Printf("Status: %s (%d ok, %d failed)\n",
         d.Status, d.OkCount, d.FailedCount)
 }
 
@@ -478,15 +478,15 @@ stacks, _, _ := client.Stacks.List(ctx, orgUUID, &terramate.StacksListOptions{
 
 // 2. For each drifted stack, get the drift details
 for _, stack := range stacks.Stacks {
-    drifts, _, _ := client.Drifts.ListForStack(ctx, orgUUID, stack.StackID, 
+    drifts, _, _ := client.Drifts.ListForStack(ctx, orgUUID, stack.StackID,
         &terramate.DriftsListOptions{
             DriftStatus: []string{"drifted"},
             PerPage:     1,  // Just the latest
         })
-    
+
     if len(drifts.Drifts) > 0 {
         drift, _, _ := client.Drifts.Get(ctx, orgUUID, stack.StackID, drifts.Drifts[0].ID)
-        
+
         fmt.Printf("Stack: %s\n", stack.MetaName)
         fmt.Printf("Drift Plan:\n%s\n", drift.DriftDetails.ChangesetASCII)
     }
@@ -503,7 +503,7 @@ reviews, _, _ := client.ReviewRequests.List(ctx, orgUUID,
     })
 
 // 2. Get PR with all stack terraform plans
-details, _, _ := client.ReviewRequests.Get(ctx, orgUUID, 
+details, _, _ := client.ReviewRequests.Get(ctx, orgUUID,
     reviews.ReviewRequests[0].ReviewRequestID, nil)
 
 // 3. Analyze each stack's changes
@@ -533,10 +533,10 @@ deployments, _, _ := client.Deployments.List(ctx, orgUUID,
 for _, d := range deployments.Deployments {
     fmt.Printf("\nDeployment #%d: %s\n", d.ID, d.CommitTitle)
     fmt.Printf("Failed stacks: %d/%d\n", d.FailedCount, d.StackDeploymentTotalCount)
-    
+
     // 3. Get individual stack failures
     stackDeployments, _, _ := client.Deployments.ListForWorkflow(ctx, orgUUID, d.ID, nil)
-    
+
     for _, sd := range stackDeployments.StackDeployments {
         if sd.Status == "failed" {
             deployment, _, _ := client.Deployments.GetStackDeployment(ctx, orgUUID, sd.ID)
@@ -565,20 +565,20 @@ details, _, _ := client.ReviewRequests.Get(ctx, orgUUID, reviews.ReviewRequests[
 for _, sp := range details.StackPreviews {
     if sp.Status == "failed" {
         fmt.Printf("\n❌ Failed: %s (Preview ID: %d)\n", sp.Stack.Path, sp.StackPreviewID)
-        
+
         // 4. Get error logs for AI analysis
         logs, _, _ := client.Previews.GetLogs(ctx, orgUUID, sp.StackPreviewID,
             &terramate.PreviewLogsOptions{
                 Channel: "stderr",  // Error messages
                 PerPage: 100,
             })
-        
+
         // 5. Display logs for AI to analyze
         fmt.Println("Error logs:")
         for _, log := range logs.StackPreviewLogLines {
             fmt.Printf("[%s] %s\n", log.Timestamp.Format("15:04:05"), log.Message)
         }
-        
+
         // AI can now analyze these logs and suggest fixes
         // Example errors:
         // - Provider authentication issues
@@ -611,19 +611,19 @@ stackDeps, _, _ := client.Deployments.ListForWorkflow(ctx, orgUUID, workflow.ID,
 for _, sd := range stackDeps.StackDeployments {
     if sd.Status == "failed" {
         // 4. Get deployment logs for AI analysis
-        logs, _, _ := client.Deployments.GetDeploymentLogs(ctx, orgUUID, 
+        logs, _, _ := client.Deployments.GetDeploymentLogs(ctx, orgUUID,
             sd.Stack.StackID, sd.DeploymentUUID,
             &terramate.DeploymentLogsOptions{
                 Channel: "stderr",
                 PerPage: 100,
             })
-        
+
         fmt.Printf("\n❌ Failed deployment: %s\n", sd.Path)
         fmt.Println("Error logs:")
         for _, log := range logs.DeploymentLogLines {
             fmt.Printf("[%s] %s\n", log.Timestamp.Format("15:04:05"), log.Message)
         }
-        
+
         // AI analyzes logs and provides:
         // - Root cause identification
         // - Fix suggestions
@@ -664,6 +664,10 @@ for _, sd := range stackDeps.StackDeployments {
   - `Get(ctx, orgUUID, stackPreviewID)` - Get preview details
   - `GetLogs(ctx, orgUUID, stackPreviewID, opts)` - Get terraform plan logs
   - `ExplainErrors(ctx, orgUUID, stackPreviewID, force)` - Get AI error explanation
+
+- **`client.Resources`** - Stack resources (plan/state)
+  - `List(ctx, orgUUID, opts)` - List/filter resources by stack, status, type, provider, etc.
+  - `Get(ctx, orgUUID, resourceUUID)` - Get resource details (including values when available)
 
 ## Type Reference
 

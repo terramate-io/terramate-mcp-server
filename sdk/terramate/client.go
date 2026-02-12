@@ -49,6 +49,7 @@ type Client struct {
 	ReviewRequests *ReviewRequestsService
 	Deployments    *DeploymentsService
 	Previews       *PreviewsService
+	Resources      *ResourcesService
 }
 
 // ClientOption is a functional option for configuring the Client
@@ -89,6 +90,7 @@ func NewClient(credential Credential, opts ...ClientOption) (*Client, error) {
 	client.ReviewRequests = &ReviewRequestsService{client: client}
 	client.Deployments = &DeploymentsService{client: client}
 	client.Previews = &PreviewsService{client: client}
+	client.Resources = &ResourcesService{client: client}
 
 	return client, nil
 }
@@ -185,7 +187,7 @@ func (c *Client) newRequest(ctx context.Context, method, path string, body io.Re
 	// Go's http package only sets GetBody automatically for certain types like
 	// *bytes.Buffer, *bytes.Reader, *strings.Reader. For custom io.Reader types,
 	// we need to read the body into a buffer to enable cloning.
-	var bodyReader io.Reader = body
+	bodyReader := body
 	if body != nil {
 		// Check if body is a type that Go's http package recognizes and sets GetBody for.
 		// Known types: *bytes.Buffer, *bytes.Reader, *strings.Reader

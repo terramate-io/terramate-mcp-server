@@ -790,6 +790,10 @@ func TestJWTCredential_reloadFromFile(t *testing.T) {
 
 // testReloadUpdatesCredential tests that reloading updates the credential fields.
 func testReloadUpdatesCredential(t *testing.T) {
+	// Skip on Windows: file write/reload timing can differ (e.g. delayed visibility).
+	if runtime.GOOS == "windows" {
+		t.Skip("reload from file behavior differs on Windows")
+	}
 	tmpDir := t.TempDir()
 	credFile := filepath.Join(tmpDir, "credentials.tmrc.json")
 

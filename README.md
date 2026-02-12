@@ -14,7 +14,8 @@ This server enables natural language interactions with your Terramate Cloud orga
 - 🔍 **Drift Detection** - View drift runs and retrieve terraform plan outputs for AI-assisted reconciliation
 - 🔀 **Pull Request Integration** - Review terraform plans for all stacks in PRs/MRs before merging
 - 🚢 **Deployment Tracking** - Monitor CI/CD deployments, view terraform apply output, debug failures
-- 🛠️ **MCP Tools** - 11 production-ready tools for Terramate Cloud operations
+- 🛠️ **MCP Tools** - 13 production-ready tools for Terramate Cloud operations
+- 📦 **Stack Resources** - List and filter resources per stack (plan/state) by status, type, provider, and more
 
 ## Installation
 
@@ -636,6 +637,64 @@ Result: Full terraform apply output and deployment details
 
 ---
 
+### Stack Resources
+
+#### `tmc_list_resources`
+
+Lists resources (stack-level plan/state resources, e.g. Terraform resources) in an organization with optional filtering.
+
+**Required Parameters:**
+
+- `organization_uuid` (string) - Organization UUID from `tmc_authenticate`
+
+**Optional Filters:**
+
+- `stack_id` (number) - Filter by stack ID (list resources for a single stack)
+- `status` (array) - Filter by resource status (ok, drifted, pending)
+- `technology` (array) - Filter by technology (e.g. terraform, opentofu)
+- `provider` (array) - Filter by provider (e.g. aws, gcloud)
+- `resource_type` (array) - Filter by resource type (e.g. aws_vpc, loadbalancer)
+- `repository` (array) - Filter by repository URLs
+- `target` (array) - Filter by deployment target
+- `extracted_account` (array) - Filter by extracted account
+- `is_archived` (array) - Filter by stack archived status
+- `policy_severity` (array) - Filter by policy check (missing, none, passed, low, medium, high)
+- `search` (string) - Search in stack title/description/path and resource name/id/address
+- `page` (number) - Page number (default: 1)
+- `per_page` (number) - Items per page (max: 100)
+- `sort` (array) - Sort fields (e.g. updated_at,desc or path,asc)
+
+**Returns:** Array of resources with descriptor (address, type, provider), stack, status, drifted, pending, and pagination info.
+
+**Example:**
+
+```
+User: "List all resources for stack 42"
+Assistant: *calls tmc_list_resources with stack_id=42*
+Result: Resources with address, type, provider, status
+```
+
+#### `tmc_get_resource`
+
+Retrieves a specific resource by UUID, including optional details (e.g. values state when available).
+
+**Required Parameters:**
+
+- `organization_uuid` (string) - Organization UUID
+- `resource_uuid` (string) - Resource UUID from `tmc_list_resources`
+
+**Returns:** Full resource object including descriptor, stack, status, and optionally `details` (values, sensitive_values).
+
+**Example:**
+
+```
+User: "Get details for resource f1c9ecfe-1a45-499b-ab6d-1aa0a8ea2f95"
+Assistant: *calls tmc_get_resource*
+Result: Resource with descriptor and optional state details
+```
+
+---
+
 ## Use Cases
 
 ### 1. Find and Analyze Drifted Infrastructure
@@ -1150,6 +1209,8 @@ make fmt
 │       ├── drifts.go            # Drifts API
 │       ├── reviewrequests.go    # Review Requests (PR/MR) API
 │       ├── deployments.go       # Deployments API
+│       ├── previews.go          # Previews API
+│       ├── resources.go         # Stack resources API
 │       └── types.go             # API data models
 ├── tools/
 │   ├── handlers.go              # Tool registration
@@ -1158,7 +1219,9 @@ make fmt
 │       ├── stacks.go            # Stack management tools
 │       ├── drifts.go            # Drift detection tools
 │       ├── reviewrequests.go    # Pull/merge request tools
-│       └── deployments.go       # Deployment tracking tools
+│       ├── deployments.go       # Deployment tracking tools
+│       ├── previews.go          # Stack preview logs tool
+│       └── resources.go         # Stack resources tools
 ├── internal/
 │   └── version/                 # Version and user agent
 └── Makefile                     # Build automation
@@ -1185,6 +1248,7 @@ The SDK provides type-safe Go clients for all Terramate Cloud APIs:
 - **Deployments** - Monitor CI/CD deployments with logs
 - **Review Requests** - Integrate with PRs/MRs
 - **Previews** - Debug failed terraform plans with logs
+- **Resources** - List and get stack resources (plan/state)
 - **Memberships** - Organization management
 
 ```go
