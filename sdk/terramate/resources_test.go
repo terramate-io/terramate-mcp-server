@@ -111,17 +111,17 @@ func TestResourcesList_QueryParams(t *testing.T) {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(200)
-		w.Write([]byte(`{"resources":[],"paginated_result":{"total":0,"page":2,"per_page":50}}`))
+		_, _ = w.Write([]byte(`{"resources":[],"paginated_result":{"total":0,"page":2,"per_page":50}}`))
 	})
 	defer cleanup()
 
 	opts := &ResourcesListOptions{
-		ListOptions:     ListOptions{Page: 2, PerPage: 50},
-		StackID:         42,
-		Status:          []string{"ok", "drifted"},
-		Technology:      []string{"terraform"},
-		Type:            []string{"aws_vpc"},
-		Search:          "vpc",
+		ListOptions: ListOptions{Page: 2, PerPage: 50},
+		StackID:     42,
+		Status:      []string{"ok", "drifted"},
+		Technology:  []string{"terraform"},
+		Type:        []string{"aws_vpc"},
+		Search:      "vpc",
 	}
 	_, _, err := client.Resources.List(context.Background(), "org-uuid", opts)
 	if err != nil {
@@ -178,7 +178,7 @@ func TestResourcesGet_ParsesResponse(t *testing.T) {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(200)
-		w.Write([]byte(payload))
+		_, _ = w.Write([]byte(payload))
 	})
 	defer cleanup()
 

@@ -42,7 +42,7 @@ func TestListResources_Success(t *testing.T) {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(200)
-		w.Write(body)
+		_, _ = w.Write(body)
 	}))
 	defer ts.Close()
 
@@ -86,7 +86,7 @@ func TestListResources_StackIDFilter(t *testing.T) {
 		capturedPath = r.URL.Path + "?" + r.URL.RawQuery
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(200)
-		w.Write([]byte(`{"resources":[],"paginated_result":{"total":0,"page":1,"per_page":20}}`))
+		_, _ = w.Write([]byte(`{"resources":[],"paginated_result":{"total":0,"page":1,"per_page":20}}`))
 	}))
 	defer ts.Close()
 
@@ -120,7 +120,7 @@ func TestGetResource_Success(t *testing.T) {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(200)
-		w.Write(body)
+		_, _ = w.Write(body)
 	}))
 	defer ts.Close()
 

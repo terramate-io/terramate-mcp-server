@@ -113,7 +113,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: terramate-mcp-server-${{ matrix.os }}
-          path: bin/terramate-mcp-server${{ matrix.os == 'windows-latest' && '.exe' || '' }}
+          path: bin/terramate-mcp-server
           retention-days: 7
 
   docker:

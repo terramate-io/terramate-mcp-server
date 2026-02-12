@@ -39,7 +39,7 @@ GOMOD := $(GOCMD) mod
 GOFMT := gofmt
 TOOLS_BIN := $(BUILD_DIR)/tools
 GOLANGCI_LINT := $(TOOLS_BIN)/golangci-lint
-GOLANGCI_LINT_VERSION ?= v1.62.0
+GOLANGCI_LINT_VERSION ?= v2.5.0
 GOTOOLCHAIN ?= go1.25.3
 GOLANGCI_LINT_TOOLCHAIN ?= go1.25.3
 
@@ -103,7 +103,7 @@ test/short: ## Run tests (skip slow tests)
 $(GOLANGCI_LINT): ## Install golangci-lint locally via go install
 	@echo "Installing golangci-lint..."
 	@mkdir -p $(TOOLS_BIN)
-	@GOTOOLCHAIN=$(GOLANGCI_LINT_TOOLCHAIN) GOBIN=$(abspath $(TOOLS_BIN)) $(GOCMD) install github.com/golangci/golangci-lint/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION)
+	@GOTOOLCHAIN=$(GOLANGCI_LINT_TOOLCHAIN) GOBIN=$(abspath $(TOOLS_BIN)) $(GOCMD) install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION)
 	@echo "✅ golangci-lint installed at $(GOLANGCI_LINT)"
 
 ## Lint and format targets

@@ -695,12 +695,12 @@ func parseJWTToken(token string) (provider string, err error) {
 // extractProviderFromIssuer extracts a friendly provider name from JWT issuer
 func extractProviderFromIssuer(issuer string) string {
 	// Common issuer patterns
-	switch {
-	case issuer == "https://accounts.google.com" || issuer == "accounts.google.com":
+	switch issuer {
+	case "https://accounts.google.com", "accounts.google.com":
 		return providerGoogle
-	case issuer == "https://token.actions.githubusercontent.com" || issuer == "token.actions.githubusercontent.com":
+	case "https://token.actions.githubusercontent.com", "token.actions.githubusercontent.com":
 		return providerGitHubActions
-	case issuer == "https://gitlab.com":
+	case "https://gitlab.com":
 		return providerGitLab
 	default:
 		return issuer

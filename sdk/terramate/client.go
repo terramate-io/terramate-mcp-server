@@ -187,7 +187,7 @@ func (c *Client) newRequest(ctx context.Context, method, path string, body io.Re
 	// Go's http package only sets GetBody automatically for certain types like
 	// *bytes.Buffer, *bytes.Reader, *strings.Reader. For custom io.Reader types,
 	// we need to read the body into a buffer to enable cloning.
-	var bodyReader io.Reader = body
+	bodyReader := body
 	if body != nil {
 		// Check if body is a type that Go's http package recognizes and sets GetBody for.
 		// Known types: *bytes.Buffer, *bytes.Reader, *strings.Reader
