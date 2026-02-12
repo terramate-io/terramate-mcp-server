@@ -49,6 +49,7 @@ type Client struct {
 	ReviewRequests *ReviewRequestsService
 	Deployments    *DeploymentsService
 	Previews       *PreviewsService
+	Resources      *ResourcesService
 }
 
 // ClientOption is a functional option for configuring the Client
@@ -89,6 +90,7 @@ func NewClient(credential Credential, opts ...ClientOption) (*Client, error) {
 	client.ReviewRequests = &ReviewRequestsService{client: client}
 	client.Deployments = &DeploymentsService{client: client}
 	client.Previews = &PreviewsService{client: client}
+	client.Resources = &ResourcesService{client: client}
 
 	return client, nil
 }

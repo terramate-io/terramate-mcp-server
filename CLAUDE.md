@@ -9,7 +9,7 @@ This is the Terramate MCP Server - a Model Context Protocol server that integrat
 ## Project Structure & Module Organization
 
 - `cmd/terramate-mcp-server/` hosts the CLI entrypoint that wires flags, creates the server, and handles shutdown.
-- `sdk/terramate/` contains the Terramate Cloud API client SDK with services for Stacks, Drifts, Deployments, ReviewRequests, Previews, and Memberships.
+- `sdk/terramate/` contains the Terramate Cloud API client SDK with services for Stacks, Drifts, Deployments, ReviewRequests, Previews, Resources, and Memberships.
 - `tools/` groups MCP tool handlers; for example see `tools/tmc` for all Terramate Cloud specific tools.
 - `types/` defines shared interfaces and structs used across the project.
 

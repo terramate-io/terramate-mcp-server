@@ -10,7 +10,7 @@ A production-ready Go SDK for interacting with the [Terramate Cloud API](https:/
 - 🔐 **Flexible Authentication** - JWT token (recommended) or API key authentication
 - 🔄 **Automatic Token Refresh** - JWT tokens refresh automatically on expiration with file watching
 - 🌍 **Multi-Region Support** - EU and US region endpoints
-- 📦 **Complete API Coverage** - Stacks, Drifts, Deployments, Review Requests, and Memberships
+- 📦 **Complete API Coverage** - Stacks, Drifts, Deployments, Review Requests, Previews, Resources, and Memberships
 - 🔁 **Automatic Retries** - Built-in exponential backoff for transient failures
 - ⏱️ **Context Support** - Cancellation and timeout handling
 - 🧪 **Well Tested** - 79%+ test coverage with 160+ tests
@@ -664,6 +664,10 @@ for _, sd := range stackDeps.StackDeployments {
   - `Get(ctx, orgUUID, stackPreviewID)` - Get preview details
   - `GetLogs(ctx, orgUUID, stackPreviewID, opts)` - Get terraform plan logs
   - `ExplainErrors(ctx, orgUUID, stackPreviewID, force)` - Get AI error explanation
+
+- **`client.Resources`** - Stack resources (plan/state)
+  - `List(ctx, orgUUID, opts)` - List/filter resources by stack, status, type, provider, etc.
+  - `Get(ctx, orgUUID, resourceUUID)` - Get resource details (including values when available)
 
 ## Type Reference
 

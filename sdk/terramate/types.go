@@ -519,3 +519,88 @@ type DeploymentLogsOptions struct {
 	ListOptions
 	Channel string // stdout, stderr
 }
+
+// Resource represents a unique resource within an organization (stack resource from plan/state).
+// Maps to Resource in the OpenAPI spec. The Details field is only set when getting a specific resource.
+type Resource struct {
+	ResourceUUID string              `json:"resource_uuid"`
+	Stack        Stack               `json:"stack"`
+	Provisioner  string              `json:"provisioner,omitempty"` // terraform, opentofu
+	Descriptor   ResourceDescriptor  `json:"descriptor"`
+	Details      *ResourceDetails    `json:"details,omitempty"`
+	Status       string              `json:"status"` // drifted, ok, pending (deprecated in favor of Drifted/Pending)
+	Drifted      bool                `json:"drifted"`
+	Pending      bool                `json:"pending"`
+	CreatedAt    time.Time           `json:"created_at"`
+	UpdatedAt    time.Time           `json:"updated_at"`
+	PolicyCheck  *ResourcePolicyCheck `json:"policy_check,omitempty"`
+}
+
+// ResourceDescriptor describes the resource (address, type, provider, extracted fields).
+// Maps to ResourceDescriptor in the OpenAPI spec.
+type ResourceDescriptor struct {
+	Address        string   `json:"address"`
+	Mode           string   `json:"mode,omitempty"`
+	Type           string   `json:"type,omitempty"`
+	Name           string   `json:"name,omitempty"`
+	Index          string   `json:"index,omitempty"`
+	ProviderName   string   `json:"provider_name,omitempty"`
+	ExtractedID    string   `json:"extracted_id,omitempty"`
+	ExtractedName  string   `json:"extracted_name,omitempty"`
+	ExtractedAccount string `json:"extracted_account,omitempty"`
+	SchemaVersion  int64   `json:"schema_version,omitempty"`
+	DependsOn      []string `json:"depends_on,omitempty"`
+	Tainted        bool    `json:"tainted,omitempty"`
+	DeposedKey     string  `json:"deposed_key,omitempty"`
+}
+
+// ResourceDetails holds detailed resource state (values, sensitive_values); only when getting a single resource.
+// Maps to ResourceDetails in the OpenAPI spec.
+type ResourceDetails struct {
+	Values         string `json:"values,omitempty"`          // JSON string
+	SensitiveValues string `json:"sensitive_values,omitempty"` // JSON string
+}
+
+// ResourcePolicyCheck summarizes policy analysis for a resource.
+// Maps to ResourcePolicyCheck in the OpenAPI spec.
+type ResourcePolicyCheck struct {
+	CreatedAt time.Time           `json:"created_at"`
+	Passed    bool               `json:"passed"`
+	Counters  PolicyCheckCounters `json:"counters"`
+}
+
+// ResourcesListResponse represents the response from listing resources.
+// Maps to ResourcesCollection in the OpenAPI spec.
+type ResourcesListResponse struct {
+	Resources       []Resource      `json:"resources"`
+	PaginatedResult PaginatedResult `json:"paginated_result"`
+}
+
+// ResourcesListOptions represents options for listing resources.
+// All filters from GET /v1/resources/{org_uuid} are supported.
+type ResourcesListOptions struct {
+	ListOptions
+	// Status filters by resource status (ok, drifted, pending)
+	Status []string
+	// Technology filters by technology (e.g. terraform, opentofu)
+	Technology []string
+	// Provider filters by provider (e.g. aws, gcloud)
+	Provider []string
+	// Type filters by resource type (e.g. vpc, loadbalancer)
+	Type []string
+	// Repository filters by repository URLs
+	Repository []string
+	// Target filters by deployment target
+	Target []string
+	// ExtractedAccount filters by extracted account
+	ExtractedAccount []string
+	// StackID filters by stack ID (single stack)
+	StackID int
+	// IsArchived filters by stack archived status (true, false, or both)
+	IsArchived []bool
+	// PolicySeverity filters by policy check result (missing, none, passed, low, medium, high)
+	PolicySeverity []string
+	// Search matches stack title/description/path and resource extracted name/id/address (regex)
+	Search string
+	Sort   []string
+}
