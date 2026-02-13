@@ -40,8 +40,15 @@ GOFMT := gofmt
 TOOLS_BIN := $(BUILD_DIR)/tools
 GOLANGCI_LINT := $(TOOLS_BIN)/golangci-lint
 GOLANGCI_LINT_VERSION ?= v2.5.0
-GOTOOLCHAIN ?= go1.25.3
-GOLANGCI_LINT_TOOLCHAIN ?= go1.25.3
+# Derive Go toolchain version from the active Go installation
+# to avoid version mismatches between build tools and golangci-lint
+ifdef ASDF
+GO_VERSION := $(ASDF_GOLANG_VERSION)
+else
+GO_VERSION := $(shell go version | awk '{print $$3}' | sed 's/go//')
+endif
+GOTOOLCHAIN ?= go$(GO_VERSION)
+GOLANGCI_LINT_TOOLCHAIN ?= go$(GO_VERSION)
 
 # Test flags
 TEST_FLAGS := -v -race -coverprofile=coverage.out -timeout=10m
@@ -110,11 +117,11 @@ $(GOLANGCI_LINT): ## Install golangci-lint locally via go install
 
 lint: $(GOLANGCI_LINT) ## Run linters
 	@echo "Running golangci-lint..."
-	@$(GOLANGCI_LINT) run --config .golangci.yml --timeout=5m
+	@env -u GOROOT GOTOOLCHAIN=local $(GOLANGCI_LINT) run --config .golangci.yml --timeout=5m
 
 lint/fix: $(GOLANGCI_LINT) ## Run linters and auto-fix issues
 	@echo "Running golangci-lint with auto-fix..."
-	@$(GOLANGCI_LINT) run --config .golangci.yml --fix --timeout=5m
+	@env -u GOROOT GOTOOLCHAIN=local $(GOLANGCI_LINT) run --config .golangci.yml --fix --timeout=5m
 
 fmt: ## Format code
 	@echo "Formatting code..."
