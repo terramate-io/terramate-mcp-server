@@ -59,6 +59,8 @@ docker run --rm -it \
   ghcr.io/terramate-io/terramate-mcp-server:latest
 ```
 
+> **Apple Silicon (M1/M2/M3/M4):** The Docker image is built for `linux/amd64`. On Apple Silicon Macs you must pass `--platform linux/amd64` to `docker run` (and `docker pull`). Docker Desktop will run the image via Rosetta emulation automatically. See the [Claude Desktop](#claude-desktop) and [Cursor](#cursor) integration examples below for ready-to-use configurations.
+
 Or build locally:
 
 ```bash
@@ -147,6 +149,8 @@ JWT tokens provide user-level authentication using your Terramate Cloud credenti
 **Token Expiration:**
 JWT tokens typically expire after 1 hour. The MCP server handles this automatically:
 - **Automatic Refresh**: When a token expires, the server automatically refreshes it using the refresh token
+- **CLI-Compatible IDP Key**: Refresh uses the same Firebase IDP key as Terramate CLI by default, so tokens issued by `terramate cloud login` can be refreshed correctly
+- **Optional Override**: Set `TMC_API_IDP_KEY` to override the default IDP key (advanced/debug use)
 - **File Watching**: The server watches the credential file and automatically reloads tokens when the Terramate CLI updates them
 - **Zero Downtime**: Token refresh happens transparently - no need to restart the server
 - **Shared Credentials**: Both MCP server and Terramate CLI can safely use and update the same credential file
@@ -249,11 +253,14 @@ export TERRAMATE_REGION="eu"
 
 #### With Docker
 
+> **Apple Silicon:** Add `--platform linux/amd64` to all `docker run` commands below.
+
 **With JWT Authentication:**
 
 ```bash
 # Mount credential file from host
 docker run --rm -it \
+  --platform linux/amd64 \
   -v ~/.terramate.d:/root/.terramate.d:ro \
   -e TERRAMATE_REGION="eu" \
   ghcr.io/terramate-io/terramate-mcp-server:latest
@@ -263,6 +270,7 @@ docker run --rm -it \
 
 ```bash
 docker run --rm -it \
+  --platform linux/amd64 \
   -e TERRAMATE_API_KEY="your-api-key" \
   -e TERRAMATE_REGION="eu" \
   ghcr.io/terramate-io/terramate-mcp-server:latest
@@ -311,6 +319,29 @@ Ensures token is fresh before server starts:
 
 **Note:** Claude Desktop runs in your user context, so it automatically has access to `~/.terramate.d/credentials.tmrc.json`. The MCP server now includes automatic token refresh, so the pre-start command is optional but recommended for extra reliability.
 
+**Option 3: Docker**
+
+Runs the MCP server via Docker instead of a local binary. On Apple Silicon Macs, the `--platform linux/amd64` flag is required:
+
+```json
+{
+  "mcpServers": {
+    "terramate": {
+      "command": "docker",
+      "args": [
+        "run", "--rm", "-i",
+        "--platform", "linux/amd64",
+        "-v", "~/.terramate.d:/root/.terramate.d:ro",
+        "-e", "TERRAMATE_REGION=eu",
+        "ghcr.io/terramate-io/terramate-mcp-server:latest"
+      ]
+    }
+  }
+}
+```
+
+> **Note:** On Intel-based Macs and Linux x86_64 hosts the `--platform linux/amd64` flag is optional but harmless to include.
+
 **With API Key:**
 
 ```json
@@ -346,7 +377,30 @@ Add to your Cursor MCP settings:
 }
 ```
 
-**Option 2: Docker with Pre-Start Refresh (Optional)**
+**Option 2: Docker**
+
+Runs the MCP server via Docker. On Apple Silicon Macs, the `--platform linux/amd64` flag is required:
+
+```json
+{
+  "mcpServers": {
+    "terramate": {
+      "command": "docker",
+      "args": [
+        "run", "--rm", "-i",
+        "--platform", "linux/amd64",
+        "-v", "~/.terramate.d:/root/.terramate.d:ro",
+        "-e", "TERRAMATE_REGION=eu",
+        "ghcr.io/terramate-io/terramate-mcp-server:latest"
+      ]
+    }
+  }
+}
+```
+
+> **Note:** On Intel-based Macs and Linux x86_64 hosts the `--platform linux/amd64` flag is optional but harmless to include.
+
+**Option 3: Docker with Pre-Start Refresh (Optional)**
 
 Ensures token is fresh before server starts:
 
@@ -357,7 +411,7 @@ Ensures token is fresh before server starts:
       "command": "bash",
       "args": [
         "-c",
-        "terramate cloud info -v >/dev/null 2>&1 || true; docker run -i --rm -v ~/.terramate.d:/root/.terramate.d:ro -e TERRAMATE_REGION=eu ghcr.io/terramate-io/terramate-mcp-server:latest"
+        "terramate cloud info -v >/dev/null 2>&1 || true; docker run -i --rm --platform linux/amd64 -v ~/.terramate.d:/root/.terramate.d:ro -e TERRAMATE_REGION=eu ghcr.io/terramate-io/terramate-mcp-server:latest"
       ]
     }
   }
@@ -1269,16 +1323,40 @@ See [sdk/terramate/README.md](sdk/terramate/README.md) for complete documentatio
 
 ## Troubleshooting
 
-### Authentication Failures
+### Docker on Apple Silicon (M1/M2/M3/M4)
 
-**Problem:** `Authentication failed: Invalid API key`
+**Problem:** The Docker container crashes on startup or prints `exec format error`
 
 **Solution:**
 
-- Verify your API key is correct
-- Ensure the API key has not expired
+- The published Docker image is built for `linux/amd64`. On Apple Silicon Macs you need to explicitly request that platform:
+  ```bash
+  docker run --rm -it --platform linux/amd64 \
+    -v ~/.terramate.d:/root/.terramate.d:ro \
+    -e TERRAMATE_REGION="eu" \
+    ghcr.io/terramate-io/terramate-mcp-server:latest
+  ```
+- Make sure Docker Desktop has Rosetta emulation enabled: **Docker Desktop → Settings → General → Use Rosetta for x86_64/amd64 emulation on Apple Silicon** (recommended for better performance)
+- Alternatively, build the image locally on your Mac to get a native `arm64` image:
+  ```bash
+  docker build -t terramate-mcp-server .
+  ```
+
+### Authentication Failures
+
+**Problem:** `Authentication failed: credentials are invalid or expired`
+
+**Solution:**
+
+- If using JWT credentials:
+  - Run `terramate cloud login` again to refresh credentials
+  - Ensure `~/.terramate.d/credentials.tmrc.json` contains both `id_token` and `refresh_token`
+  - If using custom identity provider setup, set `TMC_API_IDP_KEY` to match your Terramate CLI/IDP configuration
+- If using API key authentication:
+  - Verify your API key is correct
+  - Ensure the API key has not expired
+  - Regenerate the API key if necessary
 - Check that you're using the correct region
-- Regenerate the API key if necessary
 
 ### Region Errors
 
@@ -1356,13 +1434,16 @@ docker pull ghcr.io/terramate-io/terramate-mcp-server:1.2.3
 
 # Run with JWT authentication (recommended)
 # First: terramate cloud login
+# Note: Add --platform linux/amd64 on Apple Silicon Macs
 docker run --rm -it \
+  --platform linux/amd64 \
   -v ~/.terramate.d:/root/.terramate.d:ro \
   -e TERRAMATE_REGION="eu" \
   ghcr.io/terramate-io/terramate-mcp-server:latest
 
 # Or run with API key (deprecated)
 docker run --rm -it \
+  --platform linux/amd64 \
   -e TERRAMATE_API_KEY="your-api-key" \
   -e TERRAMATE_REGION="eu" \
   ghcr.io/terramate-io/terramate-mcp-server:latest

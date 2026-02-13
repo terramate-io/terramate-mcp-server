@@ -32,7 +32,8 @@ COPY --from=builder /build/terramate-mcp-server /usr/local/bin/terramate-mcp-ser
 # The server supports two authentication methods:
 #
 # 1. JWT Token (Recommended):
-#    Mount your credential directory and provide region:
+#    Mount your credential directory as read-only and provide region.
+#    Expired tokens are refreshed automatically in memory via the refresh token:
 #    docker run -v ~/.terramate.d:/root/.terramate.d:ro \
 #               -e TERRAMATE_REGION=eu \
 #               ghcr.io/terramate-io/terramate-mcp-server

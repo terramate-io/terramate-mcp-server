@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Add stack resources support: `tmc_list_resources` and `tmc_get_resource` tools to list and get resources per stack with filtering by status, technology, provider, type, repository, target, stack_id, policy_severity, and search
+- Add self-write guard to prevent redundant credential reloads after the MCP server writes refreshed tokens back to the credential file
+
+### Changed
+- Improve log message when credential file write fails after token refresh to clarify this is expected for read-only Docker mounts
+- Improve error message when `refresh_token` is missing from credential file to guide users toward running `terramate cloud login`
+- Surface token refresh failure reason in 401 error responses instead of returning a generic authentication error
+- Change generic unauthorized error text to credential-type-agnostic wording (`credentials are invalid or expired`)
+
+### Fixed
+- Fix JWT refresh key mismatch by aligning MCP server default Firebase IDP key with Terramate CLI and supporting `TMC_API_IDP_KEY` override
 
 ## [0.0.3] - 2025-12-11
 

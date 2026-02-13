@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -15,12 +16,72 @@ import (
 	"time"
 )
 
+type captureRoundTripper struct {
+	lastRequestURL string
+	statusCode     int
+	body           string
+}
+
+func (c *captureRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	c.lastRequestURL = req.URL.String()
+	if c.statusCode == 0 {
+		c.statusCode = http.StatusOK
+	}
+	if c.body == "" {
+		c.body = `{"id_token":"new-token","refresh_token":"new-refresh-token"}`
+	}
+	return &http.Response{
+		StatusCode: c.statusCode,
+		Body:       io.NopCloser(strings.NewReader(c.body)),
+		Header:     make(http.Header),
+	}, nil
+}
+
 func TestJWTCredential_Refresh(t *testing.T) {
 	t.Run("successful refresh", testJWTCredentialRefreshSuccessful)
 	t.Run("missing refresh token", testJWTCredentialRefreshMissingToken)
 	t.Run("concurrent refresh attempts", testJWTCredentialRefreshConcurrent)
 	t.Run("waitForRefresh waits for slow refresh", testJWTCredentialRefreshWaitForRefresh)
 	t.Run("waitForRefresh respects context cancellation", testJWTCredentialRefreshContextCancellation)
+}
+
+func TestIDPKey_Default(t *testing.T) {
+	t.Setenv("TMC_API_IDP_KEY", "")
+	got := idpKey()
+	if got != defaultFirebaseAuthAPIKey {
+		t.Fatalf("expected default idp key %q, got %q", defaultFirebaseAuthAPIKey, got)
+	}
+}
+
+func TestIDPKey_EnvOverride(t *testing.T) {
+	const expected = "test-idp-key-override"
+	t.Setenv("TMC_API_IDP_KEY", expected)
+	got := idpKey()
+	if got != expected {
+		t.Fatalf("expected env override idp key %q, got %q", expected, got)
+	}
+}
+
+func TestMakeRefreshRequest_UsesConfiguredIDPKeyInEndpoint(t *testing.T) {
+	const expectedIDPKey = "custom-idp-key"
+	t.Setenv("TMC_API_IDP_KEY", expectedIDPKey)
+
+	rt := &captureRoundTripper{}
+	cred := &JWTCredential{
+		httpClient: &http.Client{
+			Transport: rt,
+		},
+	}
+
+	resp, _, err := cred.makeRefreshRequest(context.Background(), "refresh-token")
+	if err != nil {
+		t.Fatalf("expected refresh request to succeed, got error: %v", err)
+	}
+	_ = resp.Body.Close()
+
+	if !strings.Contains(rt.lastRequestURL, "https://securetoken.googleapis.com/v1/token?key="+expectedIDPKey) {
+		t.Fatalf("expected refresh endpoint to include idp key %q, got URL: %s", expectedIDPKey, rt.lastRequestURL)
+	}
 }
 
 func testJWTCredentialRefreshSuccessful(t *testing.T) {
@@ -97,7 +158,7 @@ func testJWTCredentialRefreshMissingToken(t *testing.T) {
 		t.Fatal("expected error when refresh_token is missing")
 	}
 
-	if err.Error() != "cannot refresh token: refresh_token not available" {
+	if !strings.Contains(err.Error(), "cannot refresh token: refresh_token not available in credential file") {
 		t.Errorf("unexpected error: %v", err)
 	}
 }

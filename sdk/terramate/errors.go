@@ -7,7 +7,7 @@ import (
 
 const (
 	// ErrAuthenticationFailed is the error message returned when API authentication fails
-	ErrAuthenticationFailed = "Authentication failed: Invalid API key"
+	ErrAuthenticationFailed = "Authentication failed: credentials are invalid or expired"
 )
 
 // APIError represents an error returned by the Terramate Cloud API

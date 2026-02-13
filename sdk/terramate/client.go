@@ -264,7 +264,8 @@ func (c *Client) do(req *http.Request, v interface{}) (*Response, error) {
 			}
 
 			// Try to refresh the token
-			if refreshErr := refreshableCred.Refresh(req.Context()); refreshErr == nil {
+			refreshErr := refreshableCred.Refresh(req.Context())
+			if refreshErr == nil {
 				// Token refreshed successfully - retry the request
 				// Clone the request to avoid reusing the body
 				retryReq, cloneErr := cloneRequest(req)
@@ -277,6 +278,16 @@ func (c *Client) do(req *http.Request, v interface{}) (*Response, error) {
 						// Recursively call do() for the retry (will not recurse again due to retry count check)
 						return c.do(retryReq, v)
 					}
+				}
+			} else {
+				// Token refresh failed - return a specific error that explains why
+				// automatic refresh didn't work, so the user can take corrective action.
+				return response, &APIError{
+					StatusCode: resp.StatusCode,
+					Message: fmt.Sprintf(
+						"Authentication failed and automatic token refresh was unsuccessful: %v",
+						refreshErr,
+					),
 				}
 			}
 		}

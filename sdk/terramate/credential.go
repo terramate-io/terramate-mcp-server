@@ -26,10 +26,12 @@ const (
 	providerGitHubActions = "GitHub Actions"
 	providerGitLab        = "GitLab"
 
-	// firebaseAuthAPIKey is the public Firebase Auth API key used for token refresh.
+	// defaultFirebaseAuthAPIKey is the public Firebase Auth API key used for token refresh.
 	// This is a public client ID that is safe to expose in client applications.
-	// It's used to identify the Firebase project and is not a secret credential.
-	firebaseAuthAPIKey = "AIzaSyAXJ6bqssXF4_W4dL6LwDVR7LEGVUZxnO0"
+	// It must match the key used by Terramate CLI (same Firebase project) because
+	// refresh tokens are project-scoped.
+	// Can be overridden with TMC_API_IDP_KEY for parity with Terramate CLI.
+	defaultFirebaseAuthAPIKey = "AIzaSyDeCYIgqEhufsnBGtlNu4fv1alvpcs1Nos"
 )
 
 // Credential represents an authentication credential for Terramate Cloud
@@ -62,6 +64,12 @@ type JWTCredential struct {
 	// File watching
 	watcher     *fsnotify.Watcher
 	stopWatcher chan struct{}
+
+	// Self-write guard: when the MCP server refreshes a token and writes it back
+	// to the credential file, the file watcher would detect the change and
+	// trigger a redundant reload. This field tracks the token we last wrote ourselves
+	// so reloadFromFile() can skip the no-op reload.
+	lastSelfWriteToken string
 
 	// Refresh state
 	refreshing     bool
@@ -311,6 +319,16 @@ func (j *JWTCredential) reloadFromFile() error {
 	j.mu.Lock()
 	defer j.mu.Unlock()
 
+	// Skip reload if this is a self-triggered event from our own file write.
+	// When Refresh() writes a refreshed token back to the file, the file watcher
+	// detects the change and calls reloadFromFile(). Since the
+	// in-memory token is already up to date, this reload would be redundant.
+	if j.lastSelfWriteToken != "" && cached.IDToken == j.lastSelfWriteToken {
+		j.lastSelfWriteToken = "" // Clear the guard
+		return nil
+	}
+	j.lastSelfWriteToken = "" // Clear the guard regardless
+
 	j.idToken = cached.IDToken
 	if cached.RefreshToken != "" {
 		j.refreshToken = cached.RefreshToken
@@ -337,7 +355,13 @@ func (j *JWTCredential) Refresh(ctx context.Context) error {
 	j.mu.RUnlock()
 
 	if refreshToken == "" {
-		return j.setRefreshError(fmt.Errorf("cannot refresh token: refresh_token not available"))
+		return j.setRefreshError(fmt.Errorf(
+			"cannot refresh token: refresh_token not available in credential file\n\n" +
+				"To fix this:\n" +
+				"  1. Run 'terramate cloud login' to re-authenticate (this saves a refresh token)\n" +
+				"  2. Or provide an API key with --api-key flag\n" +
+				"  3. Or set TERRAMATE_API_KEY environment variable",
+		))
 	}
 
 	resp, body, err := j.makeRefreshRequest(ctx, refreshToken)
@@ -474,7 +498,7 @@ func (j *JWTCredential) makeRefreshRequest(ctx context.Context, refreshToken str
 	// Use injected endpoint if available (for testing), otherwise use default Firebase endpoint
 	endpoint := j.refreshEndpoint
 	if endpoint == "" {
-		endpoint = fmt.Sprintf("https://securetoken.googleapis.com/v1/token?key=%s", firebaseAuthAPIKey)
+		endpoint = fmt.Sprintf("https://securetoken.googleapis.com/v1/token?key=%s", idpKey())
 	}
 
 	payload := map[string]string{
@@ -511,6 +535,16 @@ func (j *JWTCredential) makeRefreshRequest(ctx context.Context, refreshToken str
 	}
 
 	return resp, body, nil
+}
+
+// idpKey returns the Firebase API key for token refresh.
+// It mirrors Terramate CLI behavior by supporting TMC_API_IDP_KEY override.
+func idpKey() string {
+	key := os.Getenv("TMC_API_IDP_KEY")
+	if key == "" {
+		key = defaultFirebaseAuthAPIKey
+	}
+	return key
 }
 
 // handleRefreshError handles non-200 responses from Firebase Auth.
@@ -565,8 +599,18 @@ func (j *JWTCredential) updateCredentials(result refreshResponse) {
 // updateCredentialFileIfNeeded updates the credential file if path is set.
 func (j *JWTCredential) updateCredentialFileIfNeeded() {
 	if j.credentialPath != "" {
+		// Set self-write guard before writing to prevent redundant reload
+		// by the file watcher when it detects our own write.
+		j.mu.Lock()
+		j.lastSelfWriteToken = j.idToken
+		j.mu.Unlock()
+
 		if err := j.updateCredentialFile(); err != nil {
-			log.Printf("Warning: failed to update credential file after refresh: %v", err)
+			log.Printf("Credential file is read-only, refreshed token stored in memory only (this is normal for read-only Docker mounts)")
+			// Clear the guard on failure since we didn't actually write
+			j.mu.Lock()
+			j.lastSelfWriteToken = ""
+			j.mu.Unlock()
 			// Don't fail the refresh if file update fails - token is already in memory
 		}
 	}
