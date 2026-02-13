@@ -7,10 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.1.0] - 2026-02-13
+## [0.0.5] - 2026-02-13
 
 ### Added
-- Add stack resources support: `tmc_list_resources` and `tmc_get_resource` tools to list and get resources per stack with filtering by status, technology, provider, type, repository, target, stack_id, policy_severity, and search
 - Add self-write guard to prevent redundant credential reloads after the MCP server writes refreshed tokens back to the credential file
 
 ### Changed
@@ -21,6 +20,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Fix JWT refresh key mismatch by aligning MCP server default Firebase IDP key with Terramate CLI and supporting `TMC_API_IDP_KEY` override
+
+## [0.0.4] - 2026-02-12
+
+### Added
+- Add stack resources support: `tmc_list_resources` and `tmc_get_resource` tools to list and get resources per stack with filtering by status, technology, provider, type, repository, target, stack_id, policy_severity, and search
 
 ## [0.0.3] - 2025-12-11
 
@@ -101,8 +105,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Automated Docker image publishing to GitHub Container Registry
 - Documentation and usage examples
 
-[unreleased]: https://github.com/terramate-io/terramate-mcp-server/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/terramate-io/terramate-mcp-server/compare/v0.0.3...v0.1.0
+[unreleased]: https://github.com/terramate-io/terramate-mcp-server/compare/v0.0.5...HEAD
+[0.0.5]: https://github.com/terramate-io/terramate-mcp-server/compare/v0.0.4...v0.0.5
+[0.0.4]: https://github.com/terramate-io/terramate-mcp-server/compare/v0.0.3...v0.0.4
 [0.0.3]: https://github.com/terramate-io/terramate-mcp-server/compare/v0.0.2...v0.0.3
 [0.0.2]: https://github.com/terramate-io/terramate-mcp-server/compare/v0.0.1...v0.0.2
 [0.0.1]: https://github.com/terramate-io/terramate-mcp-server/releases/tag/v0.0.1
