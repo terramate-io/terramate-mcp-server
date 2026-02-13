@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-02-13
+
 ### Added
 - Add stack resources support: `tmc_list_resources` and `tmc_get_resource` tools to list and get resources per stack with filtering by status, technology, provider, type, repository, target, stack_id, policy_severity, and search
 - Add self-write guard to prevent redundant credential reloads after the MCP server writes refreshed tokens back to the credential file
@@ -99,7 +101,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Automated Docker image publishing to GitHub Container Registry
 - Documentation and usage examples
 
-[unreleased]: https://github.com/terramate-io/terramate-mcp-server/compare/v0.0.3...HEAD
+[unreleased]: https://github.com/terramate-io/terramate-mcp-server/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/terramate-io/terramate-mcp-server/compare/v0.0.3...v0.1.0
 [0.0.3]: https://github.com/terramate-io/terramate-mcp-server/compare/v0.0.2...v0.0.3
 [0.0.2]: https://github.com/terramate-io/terramate-mcp-server/compare/v0.0.1...v0.0.2
 [0.0.1]: https://github.com/terramate-io/terramate-mcp-server/releases/tag/v0.0.1
