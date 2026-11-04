@@ -1,7 +1,7 @@
 package version
 
 // Version is the semantic version embedded in binaries and used in the user agent.
-const Version = "0.0.6"
+const Version = "0.0.7"
 
 // UserAgent returns the default HTTP User-Agent string for outbound requests.
 func UserAgent() string {
