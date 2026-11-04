@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.6] - 2026-11-04
+
 ### Added
 - Add `tmc_archive_stack` and `tmc_unarchive_stack` tools to archive and restore stacks
 - Add `Stacks.Update` SDK method for `PATCH /v1/stacks/{org_uuid}/{stack_id}`
@@ -109,7 +111,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Automated Docker image publishing to GitHub Container Registry
 - Documentation and usage examples
 
-[unreleased]: https://github.com/terramate-io/terramate-mcp-server/compare/v0.0.5...HEAD
+[unreleased]: https://github.com/terramate-io/terramate-mcp-server/compare/v0.0.6...HEAD
+[0.0.6]: https://github.com/terramate-io/terramate-mcp-server/compare/v0.0.5...v0.0.6
 [0.0.5]: https://github.com/terramate-io/terramate-mcp-server/compare/v0.0.4...v0.0.5
 [0.0.4]: https://github.com/terramate-io/terramate-mcp-server/compare/v0.0.3...v0.0.4
 [0.0.3]: https://github.com/terramate-io/terramate-mcp-server/compare/v0.0.2...v0.0.3
