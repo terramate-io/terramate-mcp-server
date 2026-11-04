@@ -175,7 +175,6 @@ func WithTimeout(timeout time.Duration) ClientOption {
 	}
 }
 
-//nolint:unparam // method parameter will be used with different HTTP methods as SDK grows
 func (c *Client) newRequest(ctx context.Context, method, path string, body io.Reader) (*http.Request, error) {
 	// Build full URL
 	u, err := c.baseURL.Parse(path)

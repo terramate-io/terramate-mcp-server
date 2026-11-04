@@ -262,6 +262,13 @@ stacks, _, err := client.Stacks.List(ctx, orgUUID, &terramate.StacksListOptions{
 stack, _, err := client.Stacks.Get(ctx, orgUUID, stackID)
 fmt.Printf("Stack: %s\n", stack.MetaName)
 fmt.Printf("Status: %s, Drift: %s\n", stack.Status, stack.DriftStatus)
+
+// Archive a stack (set IsArchived to false to unarchive).
+// The API returns 204 No Content; call Get to read the updated stack.
+archived := true
+_, err = client.Stacks.Update(ctx, orgUUID, stackID, &terramate.StackUpdateRequest{
+    IsArchived: &archived,
+})
 ```
 
 ### Drifts API
@@ -643,6 +650,7 @@ for _, sd := range stackDeps.StackDeployments {
 - **`client.Stacks`** - Infrastructure stacks
   - `List(ctx, orgUUID, opts)` - List/filter stacks
   - `Get(ctx, orgUUID, stackID)` - Get stack details
+  - `Update(ctx, orgUUID, stackID, update)` - Update stack attributes (archive/unarchive)
 
 - **`client.Drifts`** - Drift detection
   - `ListForStack(ctx, orgUUID, stackID, opts)` - List drift runs

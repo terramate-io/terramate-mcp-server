@@ -2,8 +2,10 @@ package terramate
 
 import (
 	"context"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 )
@@ -624,5 +626,209 @@ func TestStacksList_RespectsContextTimeout(t *testing.T) {
 	_, _, err := client.Stacks.List(ctx, "org-uuid", nil)
 	if err == nil {
 		t.Fatal("expected timeout error")
+	}
+}
+
+func boolPtrForTest(b bool) *bool { return &b }
+
+func TestStacksUpdate_SendsPatchRequest(t *testing.T) {
+	tests := []struct {
+		name     string
+		archived bool
+		wantBody string
+	}{
+		{name: "archive", archived: true, wantBody: `{"is_archived":true}`},
+		{name: "unarchive", archived: false, wantBody: `{"is_archived":false}`},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client, cleanup := setupTestServer(t, func(w http.ResponseWriter, r *http.Request) {
+				if r.Method != http.MethodPatch {
+					t.Errorf("expected PATCH, got %s", r.Method)
+				}
+				if r.URL.Path != "/v1/stacks/org-uuid/123" {
+					t.Errorf("unexpected path: %s", r.URL.Path)
+				}
+				if ct := r.Header.Get("Content-Type"); ct != "application/json" {
+					t.Errorf("unexpected Content-Type: %s", ct)
+				}
+				body, err := io.ReadAll(r.Body)
+				if err != nil {
+					t.Errorf("failed to read body: %v", err)
+				}
+				if got := strings.TrimSpace(string(body)); got != tt.wantBody {
+					t.Errorf("unexpected body: got %s, want %s", got, tt.wantBody)
+				}
+				w.WriteHeader(http.StatusNoContent)
+			})
+			defer cleanup()
+
+			resp, err := client.Stacks.Update(context.Background(), "org-uuid", 123,
+				&StackUpdateRequest{IsArchived: boolPtrForTest(tt.archived)})
+			if err != nil {
+				t.Fatalf("Update error: %v", err)
+			}
+			if resp == nil || resp.HTTPResponse.StatusCode != http.StatusNoContent {
+				t.Fatalf("expected 204 response, got %+v", resp)
+			}
+		})
+	}
+}
+
+func TestStacksUpdate_Validation(t *testing.T) {
+	archive := &StackUpdateRequest{IsArchived: boolPtrForTest(true)}
+	tests := []struct {
+		name      string
+		orgUUID   string
+		stackID   int
+		update    *StackUpdateRequest
+		wantError string
+	}{
+		{"empty org UUID", "", 123, archive, "organization UUID is required"},
+		{"zero stack ID", "org-uuid", 0, archive, "stack ID must be positive"},
+		{"negative stack ID", "org-uuid", -1, archive, "stack ID must be positive"},
+		{"nil update", "org-uuid", 123, nil, "update request must set at least one field"},
+		{"empty update", "org-uuid", 123, &StackUpdateRequest{}, "update request must set at least one field"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client, cleanup := setupTestServer(t, func(w http.ResponseWriter, r *http.Request) {
+				t.Error("no request should be sent for invalid input")
+			})
+			defer cleanup()
+
+			_, err := client.Stacks.Update(context.Background(), tt.orgUUID, tt.stackID, tt.update)
+			if err == nil {
+				t.Fatal("expected validation error")
+			}
+			if err.Error() != tt.wantError {
+				t.Errorf("got error %q, want %q", err.Error(), tt.wantError)
+			}
+		})
+	}
+}
+
+func TestStacksUpdate_HandlesAPIError(t *testing.T) {
+	tests := []struct {
+		name   string
+		status int
+		check  func(*APIError) bool
+	}{
+		{"unauthorized", http.StatusUnauthorized, (*APIError).IsUnauthorized},
+		{"forbidden", http.StatusForbidden, (*APIError).IsForbidden},
+		{"not found", http.StatusNotFound, (*APIError).IsNotFound},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client, cleanup := setupTestServer(t, func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(tt.status)
+				_, _ = w.Write([]byte(`{"error_code":1,"error_message":"nope"}`))
+			})
+			defer cleanup()
+
+			_, err := client.Stacks.Update(context.Background(), "org-uuid", 123,
+				&StackUpdateRequest{IsArchived: boolPtrForTest(true)})
+			apiErr, ok := err.(*APIError)
+			if !ok {
+				t.Fatalf("expected *APIError, got %T: %v", err, err)
+			}
+			if apiErr.StatusCode != tt.status || !tt.check(apiErr) {
+				t.Errorf("unexpected API error: %+v", apiErr)
+			}
+		})
+	}
+}
+
+func TestStacksUpdate_DoesNotRetryServerErrors(t *testing.T) {
+	var calls int
+	client, cleanup := setupTestServer(t, func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		w.WriteHeader(http.StatusInternalServerError)
+	})
+	defer cleanup()
+
+	_, err := client.Stacks.Update(context.Background(), "org-uuid", 123,
+		&StackUpdateRequest{IsArchived: boolPtrForTest(true)})
+	if err == nil {
+		t.Fatal("expected error for 500 response")
+	}
+	if calls != 1 {
+		t.Errorf("expected exactly 1 request (PATCH is not retried), got %d", calls)
+	}
+}
+
+func TestStacksUpdate_SendsAuthHeader(t *testing.T) {
+	client, cleanup := setupTestServer(t, func(w http.ResponseWriter, r *http.Request) {
+		username, password, ok := r.BasicAuth()
+		if !ok || username != "test-api-key" || password != "" {
+			t.Errorf("unexpected basic auth: ok=%v user=%q", ok, username)
+		}
+		w.WriteHeader(http.StatusNoContent)
+	})
+	defer cleanup()
+
+	if _, err := client.Stacks.Update(context.Background(), "org-uuid", 123,
+		&StackUpdateRequest{IsArchived: boolPtrForTest(true)}); err != nil {
+		t.Fatalf("Update error: %v", err)
+	}
+}
+
+func TestStacksUpdate_ResendsBodyAfterJWTRefresh(t *testing.T) {
+	const oldToken, newToken = "old-expired-token", "new-refreshed-token"
+	var calls int
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		body, _ := io.ReadAll(r.Body)
+		if got := strings.TrimSpace(string(body)); got != `{"is_archived":true}` {
+			t.Errorf("request %d: unexpected body %q", calls, got)
+		}
+		if calls == 1 {
+			if r.Header.Get("Authorization") != "Bearer "+oldToken {
+				t.Error("first request: unexpected Authorization header")
+			}
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		if r.Header.Get("Authorization") != "Bearer "+newToken {
+			t.Error("retry: unexpected Authorization header")
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer server.Close()
+
+	cred := &testJWTCredential{
+		JWTCredential: JWTCredential{idToken: oldToken, refreshToken: "refresh-token", provider: "Google"},
+		newToken:      newToken,
+	}
+	client, err := NewClient(cred, WithBaseURL(server.URL))
+	if err != nil {
+		t.Fatalf("NewClient error: %v", err)
+	}
+
+	if _, err := client.Stacks.Update(context.Background(), "org-uuid", 123,
+		&StackUpdateRequest{IsArchived: boolPtrForTest(true)}); err != nil {
+		t.Fatalf("Update error: %v", err)
+	}
+	if calls != 2 {
+		t.Errorf("expected 2 requests (401 then retry), got %d", calls)
+	}
+}
+
+func TestStacksUpdate_RespectsContextCancellation(t *testing.T) {
+	client, cleanup := setupTestServer(t, func(w http.ResponseWriter, r *http.Request) {
+		<-r.Context().Done()
+	})
+	defer cleanup()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	if _, err := client.Stacks.Update(ctx, "org-uuid", 123,
+		&StackUpdateRequest{IsArchived: boolPtrForTest(true)}); err == nil {
+		t.Fatal("expected error from canceled context")
 	}
 }
