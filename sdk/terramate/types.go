@@ -98,6 +98,15 @@ type Stack struct {
 	Resources            *StackResources `json:"resources,omitempty"`
 }
 
+// StackUpdateRequest holds the stack attributes to change. Only non-nil
+// fields are sent; fields left nil keep their current value.
+// Maps to PatchStackRequest in the OpenAPI spec
+type StackUpdateRequest struct {
+	// IsArchived archives (true) or unarchives (false) the stack.
+	// Setting it to the stack's current state is a no-op.
+	IsArchived *bool `json:"is_archived,omitempty"`
+}
+
 // RelatedStack represents a stack from other targets with the same repository and meta_id
 // Only set when getting a single stack
 type RelatedStack struct {

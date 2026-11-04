@@ -279,3 +279,108 @@ Response includes:
 		},
 	}
 }
+
+// ArchiveStack creates an MCP tool that archives a stack in a Terramate Cloud organization.
+func ArchiveStack(client *terramate.Client) server.ServerTool {
+	return stackArchiveStateTool(client, true, "tmc_archive_stack", `Archive a stack in a Terramate Cloud organization.
+
+Archived stacks are excluded from tmc_list_stacks results unless you filter with is_archived=true.
+Archiving is reversible with tmc_unarchive_stack. Archiving an already archived stack has no effect.
+
+Before calling this tool, confirm with the user which stack to archive: look it up with
+tmc_get_stack or tmc_list_stacks and show its meta_name, path, repository and target.
+
+Use tmc_authenticate first to get the organization UUID.
+
+Response: a confirmation line followed by the updated stack object (is_archived, archived_at, archived_by_user_uuid).`)
+}
+
+// UnarchiveStack creates an MCP tool that unarchives a stack in a Terramate Cloud organization.
+func UnarchiveStack(client *terramate.Client) server.ServerTool {
+	return stackArchiveStateTool(client, false, "tmc_unarchive_stack", `Unarchive (restore) an archived stack in a Terramate Cloud organization.
+
+Unarchived stacks show up in tmc_list_stacks results again. Unarchiving a stack that is not archived has no effect.
+To find archived stacks, use tmc_list_stacks with is_archived=true.
+
+Use tmc_authenticate first to get the organization UUID.
+
+Response: a confirmation line followed by the updated stack object (is_archived, unarchived_at, unarchived_by_user_uuid).`)
+}
+
+// stackArchiveStateTool builds a tool that sets a stack's archived state to archive.
+func stackArchiveStateTool(client *terramate.Client, archive bool, name, description string) server.ServerTool {
+	verb := "unarchive"
+	if archive {
+		verb = "archive"
+	}
+
+	return server.ServerTool{
+		Tool: mcp.Tool{
+			Name:        name,
+			Description: description,
+			InputSchema: mcp.ToolInputSchema{
+				Type: "object",
+				Properties: map[string]interface{}{
+					"organization_uuid": map[string]interface{}{
+						"type":        "string",
+						"description": "Organization UUID (get from tmc_authenticate)",
+					},
+					"stack_id": map[string]interface{}{
+						"type":        "number",
+						"description": fmt.Sprintf("ID of the stack to %s", verb),
+					},
+				},
+				Required: []string{"organization_uuid", "stack_id"},
+			},
+			Annotations: mcp.ToolAnnotation{
+				ReadOnlyHint:    mcp.ToBoolPtr(false),
+				DestructiveHint: mcp.ToBoolPtr(false), // reversible
+				IdempotentHint:  mcp.ToBoolPtr(true),
+				OpenWorldHint:   mcp.ToBoolPtr(true),
+			},
+		},
+		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			orgUUID, err := request.RequireString("organization_uuid")
+			if err != nil {
+				return mcp.NewToolResultError("Organization UUID is required and must be a string."), nil
+			}
+
+			stackID, err := request.RequireInt("stack_id")
+			if err != nil {
+				return mcp.NewToolResultError("Stack ID is required and must be a number."), nil
+			}
+			if stackID <= 0 {
+				return mcp.NewToolResultError("Stack ID must be positive."), nil
+			}
+
+			_, err = client.Stacks.Update(ctx, orgUUID, stackID, &terramate.StackUpdateRequest{IsArchived: &archive})
+			if err != nil {
+				if apiErr, ok := err.(*terramate.APIError); ok {
+					switch {
+					case apiErr.IsUnauthorized():
+						return mcp.NewToolResultError(terramate.ErrAuthenticationFailed), nil
+					case apiErr.IsForbidden():
+						return mcp.NewToolResultError(fmt.Sprintf("Permission denied: you are not allowed to %s stack %d.", verb, stackID)), nil
+					case apiErr.IsNotFound():
+						return mcp.NewToolResultError(fmt.Sprintf("Stack with ID %d not found.", stackID)), nil
+					}
+					return mcp.NewToolResultError(fmt.Sprintf("API error: %s", apiErr.Error())), nil
+				}
+				return mcp.NewToolResultError(fmt.Sprintf("Failed to %s stack: %v", verb, err)), nil
+			}
+
+			// The update succeeded; from here on, never report failure.
+			stack, _, err := client.Stacks.Get(ctx, orgUUID, stackID)
+			if err != nil {
+				return mcp.NewToolResultText(fmt.Sprintf("Stack %d %sd, but fetching its updated details failed: %v", stackID, verb, err)), nil
+			}
+
+			jsonData, err := json.MarshalIndent(stack, "", "  ")
+			if err != nil {
+				return mcp.NewToolResultText(fmt.Sprintf("Stack %d %sd, but fetching its updated details failed: %v", stackID, verb, err)), nil
+			}
+
+			return mcp.NewToolResultText(fmt.Sprintf("Stack %d %sd.\n\n%s", stackID, verb, jsonData)), nil
+		},
+	}
+}

@@ -511,6 +511,43 @@ Assistant: *calls tmc_get_stack*
 Result: Full stack metadata, related stacks, resource counts, policy checks
 ```
 
+#### `tmc_archive_stack`
+
+Archives a stack. Archived stacks are hidden from `tmc_list_stacks` unless you filter with `is_archived=[true]`. Archiving can be undone with `tmc_unarchive_stack`, and archiving an already archived stack has no effect.
+
+**Required Parameters:**
+
+- `organization_uuid` (string) - Organization UUID
+- `stack_id` (number) - ID of the stack to archive
+
+**Returns:** A confirmation line and the updated stack (`is_archived`, `archived_at`, `archived_by_user_uuid`)
+
+**Example:**
+
+```
+User: "Archive the old staging VPC stack"
+Assistant: *calls tmc_list_stacks with search="vpc", target=["staging"], confirms the stack with the user, then calls tmc_archive_stack*
+Result: Stack 123 archived, with its updated details
+```
+
+#### `tmc_unarchive_stack`
+
+Restores an archived stack so it shows up in `tmc_list_stacks` again. Unarchiving a stack that isn't archived has no effect.
+
+**Required Parameters:**
+
+- `organization_uuid` (string) - Organization UUID
+- `stack_id` (number) - ID of the stack to unarchive
+
+**Returns:** A confirmation line and the updated stack (`is_archived`, `unarchived_at`, `unarchived_by_user_uuid`)
+
+**Example:**
+
+```
+User: "Restore stack 123"
+Assistant: *calls tmc_unarchive_stack*
+```
+
 ---
 
 ### Drift Management

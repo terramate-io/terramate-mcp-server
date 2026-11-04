@@ -28,6 +28,8 @@ func (th *ToolHandlers) Tools() []server.ServerTool {
 	// Register stacks tools
 	tools = append(tools, tmc.ListStacks(th.tmcClient))
 	tools = append(tools, tmc.GetStack(th.tmcClient))
+	tools = append(tools, tmc.ArchiveStack(th.tmcClient))
+	tools = append(tools, tmc.UnarchiveStack(th.tmcClient))
 
 	// Register drift tools
 	tools = append(tools, tmc.ListDrifts(th.tmcClient))

@@ -31,15 +31,13 @@ func TestTools(t *testing.T) {
 	if len(tools) == 0 {
 		t.Fatal("expected at least one tool")
 	}
-	// Verify authentication tool is registered
-	found := false
+	registered := map[string]bool{}
 	for _, tool := range tools {
-		if tool.Tool.Name == "tmc_authenticate" {
-			found = true
-			break
-		}
+		registered[tool.Tool.Name] = true
 	}
-	if !found {
-		t.Fatal("expected tmc_authenticate tool to be registered")
+	for _, name := range []string{"tmc_authenticate", "tmc_archive_stack", "tmc_unarchive_stack"} {
+		if !registered[name] {
+			t.Errorf("expected %s tool to be registered", name)
+		}
 	}
 }

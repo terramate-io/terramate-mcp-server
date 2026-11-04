@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Add `tmc_archive_stack` and `tmc_unarchive_stack` tools to archive and restore stacks
+- Add `Stacks.Update` SDK method for `PATCH /v1/stacks/{org_uuid}/{stack_id}`
+
 ## [0.0.5] - 2026-02-13
 
 ### Added

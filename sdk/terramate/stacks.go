@@ -1,7 +1,9 @@
 package terramate
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -123,4 +125,36 @@ func (s *StacksService) Get(ctx context.Context, orgUUID string, stackID int) (*
 	}
 
 	return &stack, resp, nil
+}
+
+// Update changes specific attributes of a stack, such as its archived state.
+//
+// PATCH /v1/stacks/{org_uuid}/{stack_id}
+//
+// Only the fields set in update are changed. The API responds with
+// 204 No Content; use Get to read the updated stack.
+func (s *StacksService) Update(ctx context.Context, orgUUID string, stackID int, update *StackUpdateRequest) (*Response, error) {
+	if orgUUID == "" {
+		return nil, fmt.Errorf("organization UUID is required")
+	}
+	if stackID <= 0 {
+		return nil, fmt.Errorf("stack ID must be positive")
+	}
+	if update == nil || update.IsArchived == nil {
+		return nil, fmt.Errorf("update request must set at least one field")
+	}
+
+	body, err := json.Marshal(update)
+	if err != nil {
+		return nil, fmt.Errorf("failed to encode request: %w", err)
+	}
+
+	path := fmt.Sprintf("/v1/stacks/%s/%d", orgUUID, stackID)
+
+	req, err := s.client.newRequest(ctx, http.MethodPatch, path, bytes.NewReader(body))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	return s.client.do(req, nil)
 }
