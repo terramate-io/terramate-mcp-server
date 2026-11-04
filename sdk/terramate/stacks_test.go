@@ -726,7 +726,7 @@ func TestStacksUpdate_HandlesAPIError(t *testing.T) {
 			client, cleanup := setupTestServer(t, func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(tt.status)
-				_, _ = w.Write([]byte(`{"error":"nope"}`))
+				_, _ = w.Write([]byte(`{"error_code":1,"error_message":"nope"}`))
 			})
 			defer cleanup()
 

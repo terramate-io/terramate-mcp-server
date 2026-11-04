@@ -667,7 +667,7 @@ func TestArchiveTools_APIErrors(t *testing.T) {
 					}
 					w.Header().Set("Content-Type", "application/json")
 					w.WriteHeader(e.status)
-					_, _ = w.Write([]byte(`{"error":"nope"}`))
+					_, _ = w.Write([]byte(`{"error_code":1,"error_message":"nope"}`))
 				}
 				result, text := callArchiveTool(t, tc, handler, map[string]interface{}{
 					"organization_uuid": "org-uuid",
