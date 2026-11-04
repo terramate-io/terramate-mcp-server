@@ -284,7 +284,7 @@ Response includes:
 func ArchiveStack(client *terramate.Client) server.ServerTool {
 	return stackArchiveStateTool(client, true, "tmc_archive_stack", `Archive a stack in a Terramate Cloud organization.
 
-Archived stacks are excluded from tmc_list_stacks results unless you filter with is_archived=true.
+Archived stacks are excluded from tmc_list_stacks results unless you filter with is_archived=[true].
 Archiving is reversible with tmc_unarchive_stack. Archiving an already archived stack has no effect.
 
 Before calling this tool, confirm with the user which stack to archive: look it up with
@@ -300,7 +300,7 @@ func UnarchiveStack(client *terramate.Client) server.ServerTool {
 	return stackArchiveStateTool(client, false, "tmc_unarchive_stack", `Unarchive (restore) an archived stack in a Terramate Cloud organization.
 
 Unarchived stacks show up in tmc_list_stacks results again. Unarchiving a stack that is not archived has no effect.
-To find archived stacks, use tmc_list_stacks with is_archived=true.
+To find archived stacks, use tmc_list_stacks with is_archived=[true].
 
 Use tmc_authenticate first to get the organization UUID.
 
